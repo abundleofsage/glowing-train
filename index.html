@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sage & Emily's Expense Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Sage & Emily's Expense Tracker</h1>
+
+    <div class="container">
+        <!-- Shared Fund Section -->
+        <div class="card">
+            <h2>Shared Cash Fund</h2>
+            <p>Current Balance: <span id="fund-balance">$0.00</span></p>
+
+            <div class="form-container">
+                <h3>Add Contribution</h3>
+                <form id="contribution-form">
+                    <select id="contribution-person" required>
+                        <option value="Sage">Sage</option>
+                        <option value="Emily">Emily</option>
+                    </select>
+                    <input type="number" id="contribution-amount" placeholder="Amount" step="0.01" required>
+                    <button type="submit">Add Contribution</button>
+                </form>
+            </div>
+
+            <div class="form-container">
+                <h3>Record an Expense</h3>
+                <form id="expense-form">
+                    <input type="text" id="expense-description" placeholder="Item Description" required>
+                    <input type="number" id="expense-amount" placeholder="Amount" step="0.01" required>
+                    <button type="submit">Add Expense</button>
+                </form>
+            </div>
+
+            <h3>History</h3>
+            <ul id="fund-history">
+                <!-- History items will be added here -->
+            </ul>
+        </div>
+
+        <!-- Mileage Section -->
+        <div class="card">
+            <h2>Mileage Tracker (Rides from Sage)</h2>
+            <p>Current Amount Owed: <span id="mileage-total">$0.00</span></p>
+
+            <div class="form-container">
+                <h3>Log a Trip</h3>
+                <form id="mileage-form">
+                    <input type="text" id="trip-description" placeholder="Trip Description" required>
+                    <input type="number" id="trip-miles" placeholder="Miles" step="0.1" required>
+                    <button type="submit">Log Trip</button>
+                </form>
+            </div>
+
+            <div class="form-container">
+                <h3>Settings</h3>
+                <label for="mileage-rate">Price per mile: $</label>
+                <input type="number" id="mileage-rate" value="0.25" step="0.01">
+            </div>
+
+            <h3>Trip Log</h3>
+            <ul id="mileage-history">
+                <!-- Mileage log items will be added here -->
+            </ul>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
