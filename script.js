@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
+    const themeToggle = document.getElementById('theme-toggle');
     const fundBalanceEl = document.getElementById('fund-balance');
     const contributionForm = document.getElementById('contribution-form');
     const contributionPersonEl = document.getElementById('contribution-person');
@@ -9,6 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const expenseAmountEl = document.getElementById('expense-amount');
     const fundHistoryEl = document.getElementById('fund-history');
 
+    // Analytics DOM Elements
+    const equalizerTextEl = document.getElementById('equalizer-text');
+    const sageTotalContribEl = document.getElementById('sage-total-contrib');
+    const sageAvgContribEl = document.getElementById('sage-avg-contrib');
+    const emilyTotalContribEl = document.getElementById('emily-total-contrib');
+    const emilyAvgContribEl = document.getElementById('emily-avg-contrib');
+
     const mileageTotalEl = document.getElementById('mileage-total');
     const mileageForm = document.getElementById('mileage-form');
     const tripDescriptionEl = document.getElementById('trip-description');
@@ -16,16 +24,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const mileageRateEl = document.getElementById('mileage-rate');
     const mileageHistoryEl = document.getElementById('mileage-history');
 
+    // Whiteboard DOM Elements
+    const whiteboardForm = document.getElementById('whiteboard-form');
+    const whiteboardMessageEl = document.getElementById('whiteboard-message');
+    const whiteboardListEl = document.getElementById('whiteboard-list');
+
     // State
     let state = {
         fundBalance: 0,
-        fundHistory: [],
+        contributions: { Sage: 0, Emily: 0 },
+        fundHistory: [], // { type, person, description, amount, date }
         mileageTotal: 0,
         mileageRate: 0.25,
-        mileageHistory: [],
+        mileageHistory: [], // { description, miles, cost, date }
+        whiteboard: [], // { message, date }
     };
 
-    // --- Data Persistence ---
+    // --- Data Persistence & Migration ---
     function saveData() {
         localStorage.setItem('expenseTrackerState', JSON.stringify(state));
     }
@@ -33,31 +48,131 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadData() {
         const savedState = localStorage.getItem('expenseTrackerState');
         if (savedState) {
-            state = JSON.parse(savedState);
+            let loadedState = JSON.parse(savedState);
+            if (!loadedState.contributions) {
+                console.log("Migrating data to v2...");
+                let migratedState = {
+                    fundBalance: loadedState.fundBalance || 0,
+                    contributions: { Sage: 0, Emily: 0 },
+                    fundHistory: [],
+                    mileageTotal: loadedState.mileageTotal || 0,
+                    mileageRate: loadedState.mileageRate || 0.25,
+                    mileageHistory: loadedState.mileageHistory || [],
+                    whiteboard: [],
+                };
+                if (loadedState.fundHistory) {
+                    loadedState.fundHistory.forEach(item => {
+                        const newHistoryItem = { type: item.type, amount: item.amount, date: new Date().toISOString() };
+                        if (item.type === 'contribution') {
+                            if (item.description.includes('Sage')) {
+                                newHistoryItem.person = 'Sage';
+                                migratedState.contributions.Sage += item.amount;
+                            } else if (item.description.includes('Emily')) {
+                                newHistoryItem.person = 'Emily';
+                                migratedState.contributions.Emily += item.amount;
+                            }
+                        } else {
+                            newHistoryItem.description = item.description;
+                        }
+                        migratedState.fundHistory.push(newHistoryItem);
+                    });
+                }
+                state = migratedState;
+            } else {
+                state = loadedState;
+            }
+            // Ensure whiteboard state exists for users who have v2 data but pre-whiteboard
+            if (!state.whiteboard) {
+                state.whiteboard = [];
+            }
+            saveData();
         }
     }
+
+    // --- Analytics Calculation ---
+    function calculateMonthlyAverage(person) {
+        const contributionsByMonth = {};
+        state.fundHistory.forEach(item => {
+            if (item.type === 'contribution' && item.person === person) {
+                const date = new Date(item.date);
+                const monthYear = `${date.getFullYear()}-${date.getMonth()}`;
+                if (!contributionsByMonth[monthYear]) {
+                    contributionsByMonth[monthYear] = 0;
+                }
+                contributionsByMonth[monthYear] += item.amount;
+            }
+        });
+
+        const monthlyTotals = Object.values(contributionsByMonth);
+        if (monthlyTotals.length === 0) return 0;
+
+        const totalContribution = monthlyTotals.reduce((sum, total) => sum + total, 0);
+        return totalContribution / monthlyTotals.length;
+    }
+
 
     // --- Rendering ---
     function render() {
         // Render Fund
         fundBalanceEl.textContent = `$${state.fundBalance.toFixed(2)}`;
         fundHistoryEl.innerHTML = '';
-        state.fundHistory.forEach(item => {
+        state.fundHistory.slice().reverse().forEach(item => {
             const li = document.createElement('li');
-            const sign = item.type === 'contribution' ? '+' : '-';
-            const color = item.type === 'contribution' ? 'green' : 'red';
-            li.innerHTML = `${item.description} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span>`;
+            let description = '';
+            let sign = '';
+            let color = '';
+            if (item.type === 'contribution') {
+                description = `${item.person} contributed`;
+                sign = '+';
+                color = 'green';
+            } else {
+                description = item.description;
+                sign = '-';
+                color = 'red';
+            }
+            li.innerHTML = `${description} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span>`;
             fundHistoryEl.appendChild(li);
         });
+
+        // Render Analytics
+        const sageTotal = state.contributions.Sage;
+        const emilyTotal = state.contributions.Emily;
+        sageTotalContribEl.textContent = `$${sageTotal.toFixed(2)}`;
+        emilyTotalContribEl.textContent = `$${emilyTotal.toFixed(2)}`;
+
+        const sageAvg = calculateMonthlyAverage('Sage');
+        const emilyAvg = calculateMonthlyAverage('Emily');
+        sageAvgContribEl.textContent = `$${sageAvg.toFixed(2)}`;
+        emilyAvgContribEl.textContent = `$${emilyAvg.toFixed(2)}`;
+
+        const diff = sageTotal - emilyTotal;
+        if (diff > 0) {
+            equalizerTextEl.textContent = `Emily needs to add $${diff.toFixed(2)} to catch up.`;
+        } else if (diff < 0) {
+            equalizerTextEl.textContent = `Sage needs to add $${Math.abs(diff).toFixed(2)} to catch up.`;
+        } else {
+            equalizerTextEl.textContent = 'Contributions are perfectly balanced.';
+        }
 
         // Render Mileage
         mileageRateEl.value = state.mileageRate;
         mileageTotalEl.textContent = `$${state.mileageTotal.toFixed(2)}`;
         mileageHistoryEl.innerHTML = '';
-        state.mileageHistory.forEach(trip => {
+        state.mileageHistory.slice().reverse().forEach(trip => {
             const li = document.createElement('li');
             li.innerHTML = `${trip.description} (${trip.miles} miles) <span>$${trip.cost.toFixed(2)}</span>`;
             mileageHistoryEl.appendChild(li);
+        });
+
+        // Render Whiteboard
+        whiteboardListEl.innerHTML = '';
+        state.whiteboard.slice().reverse().forEach(item => {
+            const li = document.createElement('li');
+            const date = new Date(item.date).toLocaleString();
+            li.innerHTML = `<span>${item.message}</span><small style="align-self: flex-end;">${date}</small>`;
+            li.style.flexDirection = 'column';
+            li.style.alignItems = 'flex-start';
+            whiteboardListEl.appendChild(li);
         });
     }
 
@@ -66,16 +181,15 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const person = contributionPersonEl.value;
         const amount = parseFloat(contributionAmountEl.value);
-
         if (isNaN(amount) || amount <= 0) return;
-
         state.fundBalance += amount;
+        state.contributions[person] += amount;
         state.fundHistory.push({
             type: 'contribution',
-            description: `${person} contributed`,
+            person: person,
             amount: amount,
+            date: new Date().toISOString(),
         });
-
         contributionAmountEl.value = '';
         saveData();
         render();
@@ -85,16 +199,14 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const description = expenseDescriptionEl.value;
         const amount = parseFloat(expenseAmountEl.value);
-
         if (!description || isNaN(amount) || amount <= 0) return;
-
         state.fundBalance -= amount;
         state.fundHistory.push({
             type: 'expense',
             description: description,
             amount: -amount,
+            date: new Date().toISOString(),
         });
-
         expenseDescriptionEl.value = '';
         expenseAmountEl.value = '';
         saveData();
@@ -106,17 +218,15 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const description = tripDescriptionEl.value;
         const miles = parseFloat(tripMilesEl.value);
-
         if (!description || isNaN(miles) || miles <= 0) return;
-
         const cost = miles * state.mileageRate;
         state.mileageTotal += cost;
         state.mileageHistory.push({
             description,
             miles,
             cost,
+            date: new Date().toISOString(),
         });
-
         tripDescriptionEl.value = '';
         tripMilesEl.value = '';
         saveData();
@@ -126,16 +236,48 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateMileageRate() {
         const newRate = parseFloat(mileageRateEl.value);
         if (isNaN(newRate) || newRate < 0) return;
-
         state.mileageRate = newRate;
-        // Recalculate total based on new rate
         state.mileageTotal = state.mileageHistory.reduce((total, trip) => {
             trip.cost = trip.miles * state.mileageRate;
             return total + trip.cost;
         }, 0);
-
         saveData();
         render();
+    }
+
+    // --- Whiteboard Logic ---
+    function addMessage(e) {
+        e.preventDefault();
+        const message = whiteboardMessageEl.value;
+        if (!message) return;
+
+        state.whiteboard.push({
+            message,
+            date: new Date().toISOString(),
+        });
+
+        whiteboardMessageEl.value = '';
+        saveData();
+        render();
+    }
+
+    // --- Theme Switcher Logic ---
+    function switchTheme(e) {
+        if (e.target.checked) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
+    function loadTheme() {
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeToggle.checked = true;
+        }
     }
 
     // --- Event Listeners ---
@@ -143,8 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
     expenseForm.addEventListener('submit', addExpense);
     mileageForm.addEventListener('submit', logTrip);
     mileageRateEl.addEventListener('change', updateMileageRate);
+    themeToggle.addEventListener('change', switchTheme);
+    whiteboardForm.addEventListener('submit', addMessage);
 
     // --- Initial Load ---
     loadData();
+    loadTheme();
     render();
 });

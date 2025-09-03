@@ -1,22 +1,65 @@
+:root {
+    --bg-color: #f4f7f9;
+    --text-color: #333;
+    --header-color: #2c3e50;
+    --card-bg-color: #ffffff;
+    --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --border-color: #ecf0f1;
+    --input-bg-color: #fdfdfd;
+    --button-bg-color: #3498db;
+    --button-hover-bg-color: #2980b9;
+    --balance-color: #2980b9;
+    --fund-balance-color: #27ae60;
+    --mileage-total-color: #c0392b;
+    --history-item-bg-color: #f9f9f9;
+}
+
+body.dark-mode {
+    --bg-color: #2c3e50;
+    --text-color: #ecf0f1;
+    --header-color: #ffffff;
+    --card-bg-color: #34495e;
+    --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    --border-color: #4a6278;
+    --input-bg-color: #2c3e50;
+    --button-bg-color: #3498db;
+    --button-hover-bg-color: #2980b9;
+    --balance-color: #ecf0f1;
+    --fund-balance-color: #2ecc71;
+    --mileage-total-color: #e74c3c;
+    --history-item-bg-color: #2c3e50;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f4f7f9;
-    color: #333;
+    background-color: var(--bg-color);
+    color: var(--text-color);
     margin: 0;
     padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.header {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 h1 {
-    color: #2c3e50;
+    color: var(--header-color);
     text-align: center;
+    margin: 0;
 }
 
 h2 {
-    color: #34495e;
-    border-bottom: 2px solid #ecf0f1;
+    color: var(--text-color);
+    border-bottom: 2px solid var(--border-color);
     padding-bottom: 10px;
     margin-top: 0;
 }
@@ -31,21 +74,50 @@ h2 {
 }
 
 .card {
-    background-color: #ffffff;
+    background-color: var(--card-bg-color);
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
     padding: 20px;
     flex: 1;
     min-width: 300px;
     max-width: 480px;
+    transition: background-color 0.3s;
+}
+
+.fund-analytics {
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.fund-analytics h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.contribution-stats p {
+    margin: 5px 0;
+    font-size: 1rem;
+    font-weight: normal;
+}
+
+#equalizer-text {
+    font-size: 1rem;
+    font-style: italic;
+    text-align: center;
 }
 
 .form-container {
     margin-bottom: 20px;
     padding: 15px;
-    background-color: #fdfdfd;
-    border: 1px solid #ecf0f1;
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
     border-radius: 5px;
+    transition: background-color 0.3s;
 }
 
 form {
@@ -56,15 +128,18 @@ form {
 
 input[type="text"],
 input[type="number"],
-select {
+select,
+textarea {
     padding: 10px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 1rem;
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 button {
-    background-color: #3498db;
+    background-color: var(--button-bg-color);
     color: white;
     border: none;
     padding: 12px 15px;
@@ -75,7 +150,7 @@ button {
 }
 
 button:hover {
-    background-color: #2980b9;
+    background-color: var(--button-hover-bg-color);
 }
 
 ul {
@@ -86,12 +161,13 @@ ul {
 }
 
 li {
-    background-color: #f9f9f9;
+    background-color: var(--history-item-bg-color);
     padding: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: background-color 0.3s;
 }
 
 li:last-child {
@@ -101,17 +177,78 @@ li:last-child {
 p {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #2980b9;
+    color: var(--balance-color);
 }
 
 #fund-balance {
-    color: #27ae60;
+    color: var(--fund-balance-color);
 }
 
 #mileage-total {
-    color: #c0392b;
+    color: var(--mileage-total-color);
 }
 
 label {
     font-weight: bold;
+}
+
+/* Theme Switcher Styles */
+.theme-switcher {
+    display: flex;
+    align-items: center;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: #2196F3;
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
 }
