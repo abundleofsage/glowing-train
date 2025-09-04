@@ -51,6 +51,22 @@ body {
     margin-bottom: 20px;
 }
 
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.reset-button {
+    background-color: var(--mileage-total-color);
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.reset-button:hover {
+    opacity: 0.8;
+}
+
 h1 {
     color: var(--header-color);
     text-align: center;

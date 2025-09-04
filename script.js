@@ -39,6 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const whiteboardMessageEl = document.getElementById('whiteboard-message');
     const whiteboardListEl = document.getElementById('whiteboard-list');
 
+    // Control DOM Elements
+    const resetButton = document.getElementById('reset-button');
+
     // State
     let state = {
         fundBalance: 0,
@@ -136,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fundHistoryEl.innerHTML = '';
         state.fundHistory.slice().reverse().forEach(item => {
             const li = document.createElement('li');
+            const date = new Date(item.date).toLocaleString();
             let description = '', sign = '', color = '';
             if (item.type === 'contribution') {
                 description = `${item.person} contributed`;
@@ -146,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sign = '-';
                 color = 'red';
             }
-            li.innerHTML = `${description} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span>`;
+            li.innerHTML = `<div>${description} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
             fundHistoryEl.appendChild(li);
         });
 
@@ -173,10 +177,11 @@ document.addEventListener('DOMContentLoaded', () => {
         mileageHistoryEl.innerHTML = '';
         state.mileageHistory.slice().reverse().forEach(item => {
             const li = document.createElement('li');
+            const date = new Date(item.date).toLocaleString();
             if (item.type === 'payment') {
-                li.innerHTML = `Payment Received <span style="color: green;">-$${item.amount.toFixed(2)}</span>`;
+                li.innerHTML = `<div>Payment Received <span style="color: green;">-$${item.amount.toFixed(2)}</span></div><small>${date}</small>`;
             } else {
-                li.innerHTML = `${item.description} (${item.miles} miles) <span>$${item.cost.toFixed(2)}</span>`;
+                li.innerHTML = `<div>${item.description} (${item.miles} miles) <span>$${item.cost.toFixed(2)}</span></div><small>${date}</small>`;
             }
             mileageHistoryEl.appendChild(li);
         });
@@ -194,6 +199,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Logic Functions ---
+    function resetAllData() {
+        if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+            localStorage.removeItem('expenseTrackerState');
+            location.reload();
+        }
+    }
+
     function addContribution(e) { e.preventDefault(); const p = contributionPersonEl.value, a = parseFloat(contributionAmountEl.value); if(isNaN(a)||a<=0)return; state.fundBalance+=a; state.contributions[p]+=a; state.fundHistory.push({type:'contribution',person:p,amount:a,date:new Date().toISOString()}); contributionAmountEl.value=''; saveData(); render(); }
     function addExpense(e) { e.preventDefault(); const d = expenseDescriptionEl.value, a = parseFloat(expenseAmountEl.value); if(!d||isNaN(a)||a<=0)return; state.fundBalance-=a; state.fundHistory.push({type:'expense',description:d,amount:-a,date:new Date().toISOString()}); expenseDescriptionEl.value=''; expenseAmountEl.value=''; saveData(); render(); }
     function addMessage(e) { e.preventDefault(); const m=whiteboardMessageEl.value; if(!m)return; state.whiteboard.push({message:m,date:new Date().toISOString()}); whiteboardMessageEl.value=''; saveData(); render(); }
@@ -260,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggle.addEventListener('change', switchTheme);
     whiteboardForm.addEventListener('submit', addMessage);
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
+    resetButton.addEventListener('click', resetAllData);
 
     // --- Initial Load ---
     loadData();
