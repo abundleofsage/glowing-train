@@ -8,12 +8,19 @@
 </head>
 <body>
     <div class="header">
-        <h1>Sage & Emily's Expense Tracker</h1>
+        <h1 class="main-title">S&E Tracker</h1>
+        <div id="top-nav" class="top-nav">
+            <button class="nav-button active" data-index="0">Fund</button>
+            <button class="nav-button" data-index="1">Mileage</button>
+            <button class="nav-button" data-index="2">Categories</button>
+            <button class="nav-button" data-index="3">Chores</button>
+            <button class="nav-button" data-index="4">Whiteboard</button>
+        </div>
         <div class="header-controls">
-            <button id="export-button" class="control-button">Export Data</button>
-            <button id="import-button" class="control-button">Import Data</button>
+            <button id="export-button" class="control-button">Export</button>
+            <button id="import-button" class="control-button">Import</button>
             <input type="file" id="import-file" style="display: none;" accept=".json">
-            <button id="reset-button" class="reset-button">Reset All Data</button>
+            <button id="reset-button" class="reset-button">Reset</button>
             <div class="theme-switcher">
                 <label class="switch">
                     <input type="checkbox" id="theme-toggle">

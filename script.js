@@ -499,18 +499,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const cards = document.querySelectorAll('.card');
     const navLeft = document.getElementById('nav-left');
     const navRight = document.getElementById('nav-right');
+    const topNav = document.getElementById('top-nav');
+    const navButtons = document.querySelectorAll('.nav-button');
     let currentCardIndex = 0;
 
-    function updateNavButtons() {
+    function updateNavigationState() {
+        // Update side arrows
         navLeft.style.display = currentCardIndex === 0 ? 'none' : 'flex';
         navRight.style.display = currentCardIndex === cards.length - 1 ? 'none' : 'flex';
+
+        // Update top nav buttons
+        navButtons.forEach((btn, index) => {
+            if (index === currentCardIndex) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
     }
 
     function scrollToCard(index) {
         const cardWidth = container.offsetWidth;
         container.scrollLeft = cardWidth * index;
         currentCardIndex = index;
-        updateNavButtons();
+        updateNavigationState();
     }
 
     navLeft.addEventListener('click', () => {
@@ -525,6 +537,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    topNav.addEventListener('click', (e) => {
+        if (e.target.matches('.nav-button')) {
+            const index = parseInt(e.target.dataset.index, 10);
+            scrollToCard(index);
+        }
+    });
+
     // Also update on scroll (e.g., if user swipes)
     let scrollTimeout;
     container.addEventListener('scroll', () => {
@@ -534,11 +553,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const newIndex = Math.round(container.scrollLeft / cardWidth);
             if (newIndex !== currentCardIndex) {
                 currentCardIndex = newIndex;
-                updateNavButtons();
+                updateNavigationState();
             }
         }, 150); // Debounce to avoid excessive calculations during scroll
     });
 
     // Initial state
-    updateNavButtons();
+    updateNavigationState();
 });
