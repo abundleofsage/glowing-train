@@ -22,10 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const mileageForm = document.getElementById('mileage-form');
     const tripDescriptionEl = document.getElementById('trip-description');
     const tripMilesEl = document.getElementById('trip-miles');
-    const mileageRateEl = document.getElementById('mileage-rate');
-    const mileageHistoryEl = document.getElementById('mileage-history');
     const paymentForm = document.getElementById('payment-form');
     const paymentAmountEl = document.getElementById('payment-amount');
+    const mileageHistoryEl = document.getElementById('mileage-history');
+
+    // Mileage Settings DOM Elements
+    const mpgInput = document.getElementById('mpg');
+    const gasCostInput = document.getElementById('gas-cost');
+    const maintenanceFeeInput = document.getElementById('maintenance-fee');
+    const convenienceFeeInput = document.getElementById('convenience-fee');
+    const effectiveRateEl = document.getElementById('effective-rate');
+    const mileageSettingsForm = document.getElementById('mileage-settings-form');
 
     // Whiteboard DOM Elements
     const whiteboardForm = document.getElementById('whiteboard-form');
@@ -36,11 +43,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let state = {
         fundBalance: 0,
         contributions: { Sage: 0, Emily: 0 },
-        fundHistory: [], // { type, person, description, amount, date }
+        fundHistory: [],
         mileageTotal: 0,
-        mileageRate: 0.25,
-        mileageHistory: [], // { type, description, miles, cost, amount, date }
-        whiteboard: [], // { message, date }
+        mileageSettings: {
+            mpg: 25,
+            gasCost: 3.75,
+            maintenance: 0.05,
+            convenience: 0.05,
+        },
+        mileageHistory: [],
+        whiteboard: [],
     };
 
     // --- Data Persistence & Migration ---
@@ -52,18 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedState = localStorage.getItem('expenseTrackerState');
         if (savedState) {
             let loadedState = JSON.parse(savedState);
-            // --- Data Migration for Fund Contributions ---
+
+            // --- Data Migration: v1 -> v2 (Fund Contributions) ---
             if (!loadedState.contributions) {
                 console.log("Migrating fund data to v2...");
-                let migratedState = {
-                    fundBalance: loadedState.fundBalance || 0,
-                    contributions: { Sage: 0, Emily: 0 },
-                    fundHistory: [],
-                    mileageTotal: loadedState.mileageTotal || 0,
-                    mileageRate: loadedState.mileageRate || 0.25,
-                    mileageHistory: loadedState.mileageHistory || [],
-                    whiteboard: [],
-                };
+                let migratedState = { ...state, ...loadedState, contributions: { Sage: 0, Emily: 0 }, fundHistory: [] };
                 if (loadedState.fundHistory) {
                     loadedState.fundHistory.forEach(item => {
                         const newHistoryItem = { type: item.type, amount: item.amount, date: new Date().toISOString() };
@@ -76,22 +81,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 state = migratedState;
             } else {
-                state = loadedState;
+                state = { ...state, ...loadedState };
             }
 
-            // --- Data Migration for Mileage History ---
-            state.mileageHistory.forEach(item => {
-                if (!item.type) { // If old item without a type
-                    item.type = 'trip';
-                }
-            });
+            // --- Data Migration: v2 -> v3 (Mileage Rate to Settings) ---
+            if (loadedState.mileageRate) {
+                console.log("Migrating mileage data to v3...");
+                // Keep the old rate as the convenience fee and use defaults for others
+                state.mileageSettings = {
+                    mpg: 25,
+                    gasCost: 3.75,
+                    maintenance: 0.05,
+                    convenience: loadedState.mileageRate - 0.20, // Approximate
+                };
+                delete state.mileageRate; // Remove old key
+            }
 
-            if (!state.whiteboard) { state.whiteboard = []; }
+            // --- Backward Compatibility Checks ---
+            state.mileageHistory.forEach(item => { if (!item.type) item.type = 'trip'; });
+            if (!state.whiteboard) state.whiteboard = [];
+            if (!state.mileageSettings) state.mileageSettings = { mpg: 25, gasCost: 3.75, maintenance: 0.05, convenience: 0.05 };
+
             saveData();
         }
     }
 
-    // --- Analytics Calculation ---
+    // --- Calculation Helpers ---
+    function calculateEffectiveRate() {
+        const s = state.mileageSettings;
+        if (s.mpg === 0) return s.maintenance + s.convenience; // Avoid division by zero
+        return (s.gasCost / s.mpg) + s.maintenance + s.convenience;
+    }
+
     function calculateMonthlyAverage(person) {
         const contributionsByMonth = {};
         state.fundHistory.forEach(item => {
@@ -107,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalContribution = monthlyTotals.reduce((sum, total) => sum + total, 0);
         return totalContribution / monthlyTotals.length;
     }
-
 
     // --- Rendering ---
     function render() {
@@ -143,14 +163,19 @@ document.addEventListener('DOMContentLoaded', () => {
         else { equalizerTextEl.textContent = 'Contributions are perfectly balanced.'; }
 
         // Render Mileage
-        mileageRateEl.value = state.mileageRate;
         mileageTotalEl.textContent = `$${state.mileageTotal.toFixed(2)}`;
+        mpgInput.value = state.mileageSettings.mpg;
+        gasCostInput.value = state.mileageSettings.gasCost;
+        maintenanceFeeInput.value = state.mileageSettings.maintenance;
+        convenienceFeeInput.value = state.mileageSettings.convenience;
+        effectiveRateEl.textContent = calculateEffectiveRate().toFixed(2);
+
         mileageHistoryEl.innerHTML = '';
         state.mileageHistory.slice().reverse().forEach(item => {
             const li = document.createElement('li');
             if (item.type === 'payment') {
                 li.innerHTML = `Payment Received <span style="color: green;">-$${item.amount.toFixed(2)}</span>`;
-            } else { // trip
+            } else {
                 li.innerHTML = `${item.description} (${item.miles} miles) <span>$${item.cost.toFixed(2)}</span>`;
             }
             mileageHistoryEl.appendChild(li);
@@ -168,42 +193,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Fund Logic ---
-    function addContribution(e) {
-        e.preventDefault();
-        const person = contributionPersonEl.value;
-        const amount = parseFloat(contributionAmountEl.value);
-        if (isNaN(amount) || amount <= 0) return;
-        state.fundBalance += amount;
-        state.contributions[person] += amount;
-        state.fundHistory.push({ type: 'contribution', person: person, amount: amount, date: new Date().toISOString() });
-        contributionAmountEl.value = '';
-        saveData();
-        render();
-    }
+    // --- Logic Functions ---
+    function addContribution(e) { e.preventDefault(); const p = contributionPersonEl.value, a = parseFloat(contributionAmountEl.value); if(isNaN(a)||a<=0)return; state.fundBalance+=a; state.contributions[p]+=a; state.fundHistory.push({type:'contribution',person:p,amount:a,date:new Date().toISOString()}); contributionAmountEl.value=''; saveData(); render(); }
+    function addExpense(e) { e.preventDefault(); const d = expenseDescriptionEl.value, a = parseFloat(expenseAmountEl.value); if(!d||isNaN(a)||a<=0)return; state.fundBalance-=a; state.fundHistory.push({type:'expense',description:d,amount:-a,date:new Date().toISOString()}); expenseDescriptionEl.value=''; expenseAmountEl.value=''; saveData(); render(); }
+    function addMessage(e) { e.preventDefault(); const m=whiteboardMessageEl.value; if(!m)return; state.whiteboard.push({message:m,date:new Date().toISOString()}); whiteboardMessageEl.value=''; saveData(); render(); }
 
-    function addExpense(e) {
-        e.preventDefault();
-        const description = expenseDescriptionEl.value;
-        const amount = parseFloat(expenseAmountEl.value);
-        if (!description || isNaN(amount) || amount <= 0) return;
-        state.fundBalance -= amount;
-        state.fundHistory.push({ type: 'expense', description: description, amount: -amount, date: new Date().toISOString() });
-        expenseDescriptionEl.value = '';
-        expenseAmountEl.value = '';
-        saveData();
-        render();
-    }
-
-    // --- Mileage Logic ---
     function logTrip(e) {
         e.preventDefault();
         const description = tripDescriptionEl.value;
         const miles = parseFloat(tripMilesEl.value);
         if (!description || isNaN(miles) || miles <= 0) return;
-        const cost = miles * state.mileageRate;
+
+        const cost = miles * calculateEffectiveRate();
         state.mileageTotal += cost;
         state.mileageHistory.push({ type: 'trip', description, miles, cost, date: new Date().toISOString() });
+
         tripDescriptionEl.value = '';
         tripMilesEl.value = '';
         saveData();
@@ -214,72 +218,48 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const amount = parseFloat(paymentAmountEl.value);
         if (isNaN(amount) || amount <= 0) return;
-
         state.mileageTotal -= amount;
-        state.mileageHistory.push({
-            type: 'payment',
-            amount: amount,
-            date: new Date().toISOString(),
-        });
-
+        state.mileageHistory.push({ type: 'payment', amount: amount, date: new Date().toISOString() });
         paymentAmountEl.value = '';
         saveData();
         render();
     }
 
-    function updateMileageRate() {
-        const newRate = parseFloat(mileageRateEl.value);
-        if (isNaN(newRate) || newRate < 0) return;
-        state.mileageRate = newRate;
-        state.mileageTotal = state.mileageHistory.reduce((total, trip) => {
-            if (trip.type === 'trip') {
-                trip.cost = trip.miles * state.mileageRate;
-                return total + trip.cost;
-            }
-            return total - trip.amount; // Subtract payments
-        }, 0);
-        saveData();
-        render();
-    }
+    function updateMileageSettings() {
+        state.mileageSettings.mpg = parseFloat(mpgInput.value) || 0;
+        state.mileageSettings.gasCost = parseFloat(gasCostInput.value) || 0;
+        state.mileageSettings.maintenance = parseFloat(maintenanceFeeInput.value) || 0;
+        state.mileageSettings.convenience = parseFloat(convenienceFeeInput.value) || 0;
 
-    // --- Whiteboard Logic ---
-    function addMessage(e) {
-        e.preventDefault();
-        const message = whiteboardMessageEl.value;
-        if (!message) return;
-        state.whiteboard.push({ message, date: new Date().toISOString() });
-        whiteboardMessageEl.value = '';
+        // Recalculate total based on new settings
+        let newTotal = 0;
+        const effectiveRate = calculateEffectiveRate();
+        state.mileageHistory.forEach(item => {
+            if (item.type === 'trip') {
+                item.cost = item.miles * effectiveRate;
+                newTotal += item.cost;
+            } else { // payment
+                newTotal -= item.amount;
+            }
+        });
+        state.mileageTotal = newTotal;
+
         saveData();
         render();
     }
 
     // --- Theme Switcher Logic ---
-    function switchTheme(e) {
-        if (e.target.checked) {
-            document.body.classList.add('dark-mode');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.body.classList.remove('dark-mode');
-            localStorage.setItem('theme', 'light');
-        }
-    }
-
-    function loadTheme() {
-        const currentTheme = localStorage.getItem('theme');
-        if (currentTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            themeToggle.checked = true;
-        }
-    }
+    function switchTheme(e) { if(e.target.checked){document.body.classList.add('dark-mode');localStorage.setItem('theme','dark');}else{document.body.classList.remove('dark-mode');localStorage.setItem('theme','light');} }
+    function loadTheme() { const theme=localStorage.getItem('theme'); if(theme==='dark'){document.body.classList.add('dark-mode');themeToggle.checked=true;} }
 
     // --- Event Listeners ---
     contributionForm.addEventListener('submit', addContribution);
     expenseForm.addEventListener('submit', addExpense);
     mileageForm.addEventListener('submit', logTrip);
     paymentForm.addEventListener('submit', recordMileagePayment);
-    mileageRateEl.addEventListener('change', updateMileageRate);
     themeToggle.addEventListener('change', switchTheme);
     whiteboardForm.addEventListener('submit', addMessage);
+    mileageSettingsForm.addEventListener('change', updateMileageSettings);
 
     // --- Initial Load ---
     loadData();

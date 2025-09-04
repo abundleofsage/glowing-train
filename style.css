@@ -111,6 +111,21 @@ h2 {
     text-align: center;
 }
 
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.setting-row label {
+    flex-basis: 60%;
+}
+
+.setting-row input {
+    flex-basis: 35%;
+}
+
 .form-container {
     margin-bottom: 20px;
     padding: 15px;
