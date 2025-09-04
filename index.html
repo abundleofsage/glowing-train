@@ -16,6 +16,7 @@
             <button class="nav-button" data-index="2">Charts</button>
             <button class="nav-button" data-index="3">Chores</button>
             <button class="nav-button" data-index="4">Whiteboard</button>
+            <button class="nav-button" data-index="5">Settings</button>
         </div>
         <div class="header-controls">
             <button id="export-button" class="control-button">Export</button>
@@ -103,27 +104,6 @@
                 </form>
             </div>
 
-            <div class="form-container" id="mileage-settings-form">
-                <h3>Settings</h3>
-                <div class="setting-row">
-                    <label for="mpg">Vehicle MPG:</label>
-                    <input type="number" id="mpg" value="25" step="1">
-                </div>
-                <div class="setting-row">
-                    <label for="gas-cost">Gas Cost ($/gallon):</label>
-                    <input type="number" id="gas-cost" value="3.75" step="0.01">
-                </div>
-                <div class="setting-row">
-                    <label for="maintenance-fee">Maintenance ($/mile):</label>
-                    <input type="number" id="maintenance-fee" value="0.05" step="0.01">
-                </div>
-                <div class="setting-row">
-                    <label for="convenience-fee">Convenience ($/mile):</label>
-                    <input type="number" id="convenience-fee" value="0.05" step="0.01">
-                </div>
-                <p><b>Effective Rate:</b> $<span id="effective-rate">0.25</span> / mile</p>
-            </div>
-
             <h3>Trip Log</h3>
             <ul id="mileage-history">
                 <!-- Mileage log items will be added here -->
@@ -182,13 +162,77 @@
             <div class="form-container">
                 <form id="whiteboard-form">
                     <textarea id="whiteboard-message" placeholder="Share a message..." rows="3" required></textarea>
-                    <button type="submit">Post Message</button>
+                    <div id="whiteboard-post-buttons" style="display: flex; gap: 10px;">
+                        <button type="submit" class="whiteboard-post-btn" data-person="Sage">Post as Sage</button>
+                        <button type="submit" class="whiteboard-post-btn" data-person="Emily">Post as Emily</button>
+                    </div>
                 </form>
             </div>
             <h3>Messages</h3>
             <ul id="whiteboard-list">
                 <!-- Messages will be added here -->
             </ul>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="card">
+            <h2>Settings</h2>
+
+            <!-- General Settings -->
+            <div class="form-container">
+                <h3>General</h3>
+                <div class="setting-row">
+                    <label for="roommate1-name">Roommate 1 Name:</label>
+                    <input type="text" id="roommate1-name" value="Sage">
+                </div>
+                <div class="setting-row">
+                    <label for="roommate2-name">Roommate 2 Name:</label>
+                    <input type="text" id="roommate2-name" value="Emily">
+                </div>
+                 <div class="setting-row">
+                    <label for="theme-toggle-settings">Dark Mode:</label>
+                    <div class="theme-switcher">
+                        <label class="switch">
+                            <input type="checkbox" id="theme-toggle-settings">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mileage Settings -->
+            <div class="form-container" id="mileage-settings-form">
+                <h3>Mileage</h3>
+                <div class="setting-row">
+                    <label for="mpg">Vehicle MPG:</label>
+                    <input type="number" id="mpg" value="25" step="1">
+                </div>
+                <div class="setting-row">
+                    <label for="gas-cost">Gas Cost ($/gallon):</label>
+                    <input type="number" id="gas-cost" value="3.75" step="0.01">
+                </div>
+                <div class="setting-row">
+                    <label for="maintenance-fee">Maintenance ($/mile):</label>
+                    <input type="number" id="maintenance-fee" value="0.05" step="0.01">
+                </div>
+                <div class="setting-row">
+                    <label for="convenience-fee">Convenience ($/mile):</label>
+                    <input type="number" id="convenience-fee" value="0.05" step="0.01">
+                </div>
+                <p><b>Effective Rate:</b> $<span id="effective-rate">0.25</span> / mile</p>
+            </div>
+
+            <!-- Expense Category Settings -->
+            <div class="form-container">
+                <h3>Expense Categories</h3>
+                <ul id="expense-category-list">
+                    <!-- Categories will be rendered here by JS -->
+                </ul>
+                <form id="add-category-form" style="flex-direction: row; align-items: center;">
+                    <input type="text" id="new-category-name" placeholder="New category name" style="flex-grow: 1;" required>
+                    <button type="submit">Add</button>
+                </form>
+            </div>
         </div>
     </div>
 

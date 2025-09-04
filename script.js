@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
+    // --- DOM Elements ---
     const themeToggle = document.getElementById('theme-toggle');
     const fundBalanceEl = document.getElementById('fund-balance');
     const contributionForm = document.getElementById('contribution-form');
@@ -10,15 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const expenseCategoryEl = document.getElementById('expense-category');
     const expenseAmountEl = document.getElementById('expense-amount');
     const fundHistoryEl = document.getElementById('fund-history');
-
-    // Analytics DOM Elements
     const equalizerTextEl = document.getElementById('equalizer-text');
     const sageTotalContribEl = document.getElementById('sage-total-contrib');
     const sageAvgContribEl = document.getElementById('sage-avg-contrib');
     const emilyTotalContribEl = document.getElementById('emily-total-contrib');
     const emilyAvgContribEl = document.getElementById('emily-avg-contrib');
-
-    // Mileage DOM Elements
     const mileageTotalEl = document.getElementById('mileage-total');
     const mileageForm = document.getElementById('mileage-form');
     const tripDescriptionEl = document.getElementById('trip-description');
@@ -26,56 +22,58 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentForm = document.getElementById('payment-form');
     const paymentAmountEl = document.getElementById('payment-amount');
     const mileageHistoryEl = document.getElementById('mileage-history');
-
-    // Mileage Settings DOM Elements
     const mpgInput = document.getElementById('mpg');
     const gasCostInput = document.getElementById('gas-cost');
     const maintenanceFeeInput = document.getElementById('maintenance-fee');
     const convenienceFeeInput = document.getElementById('convenience-fee');
     const effectiveRateEl = document.getElementById('effective-rate');
     const mileageSettingsForm = document.getElementById('mileage-settings-form');
-
-    // Whiteboard DOM Elements
     const whiteboardForm = document.getElementById('whiteboard-form');
     const whiteboardMessageEl = document.getElementById('whiteboard-message');
     const whiteboardListEl = document.getElementById('whiteboard-list');
-
-    // Chart DOM Elements
-    let contributionChart = null;
-    let categoryChart = null;
-
-    // Chore DOM Elements
     const choreForm = document.getElementById('chore-form');
     const choreDescriptionEl = document.getElementById('chore-description');
     const choreDurationEl = document.getElementById('chore-duration');
     const oneTimeChoreListEl = document.getElementById('one-time-chore-list');
     const recurringChoreListEl = document.getElementById('recurring-chore-list');
     const completedChoreListEl = document.getElementById('completed-chore-list');
-
-    // Control DOM Elements
     const resetButton = document.getElementById('reset-button');
     const exportButton = document.getElementById('export-button');
     const importButton = document.getElementById('import-button');
     const importFileEl = document.getElementById('import-file');
     const loadTestDataButton = document.getElementById('load-test-data-button');
 
-    // State
-    let state = {
+    // --- Settings DOM Elements ---
+    const roommate1NameInput = document.getElementById('roommate1-name');
+    const roommate2NameInput = document.getElementById('roommate2-name');
+    const themeToggleSettings = document.getElementById('theme-toggle-settings');
+    const expenseCategoryListEl = document.getElementById('expense-category-list');
+    const addCategoryForm = document.getElementById('add-category-form');
+    const newCategoryNameInput = document.getElementById('new-category-name');
+
+    // --- Chart instances ---
+    let contributionChart = null;
+    let categoryChart = null;
+
+    // --- State ---
+    let state = {};
+    const defaultState = {
         fundBalance: 0,
-        contributions: { Sage: 0, Emily: 0 },
+        contributions: {},
         fundHistory: [],
         mileageTotal: 0,
-        mileageSettings: {
-            mpg: 25,
-            gasCost: 3.75,
-            maintenance: 0.05,
-            convenience: 0.05,
-        },
+        mileageSettings: { mpg: 25, gasCost: 3.75, maintenance: 0.05, convenience: 0.05 },
         mileageHistory: [],
         whiteboard: [],
         chores: [],
         completedChores: [],
+        roommates: ['Sage', 'Emily'],
+        expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'],
     };
+
+    // --- Helper Functions ---
+    const getPersonClass = (person) => state.roommates.indexOf(person) === 0 ? 'sage' : 'emily';
+    const getPersonName = (index) => state.roommates[index] || `Roommate ${index + 1}`;
 
     // --- Data Persistence & Migration ---
     function saveData() {
@@ -84,68 +82,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadData() {
         const savedState = localStorage.getItem('expenseTrackerState');
-        if (savedState) {
-            let loadedState = JSON.parse(savedState);
+        let loadedState = savedState ? JSON.parse(savedState) : {};
 
-            // --- Data Migration: v1 -> v2 (Fund Contributions) ---
-            if (!loadedState.contributions) {
-                console.log("Migrating fund data to v2...");
-                let migratedState = { ...state, ...loadedState, contributions: { Sage: 0, Emily: 0 }, fundHistory: [] };
-                if (loadedState.fundHistory) {
-                    loadedState.fundHistory.forEach(item => {
-                        const newHistoryItem = { type: item.type, amount: item.amount, date: new Date().toISOString() };
-                        if (item.type === 'contribution') {
-                            if (item.description.includes('Sage')) { newHistoryItem.person = 'Sage'; migratedState.contributions.Sage += item.amount; }
-                            else if (item.description.includes('Emily')) { newHistoryItem.person = 'Emily'; migratedState.contributions.Emily += item.amount; }
-                        } else { newHistoryItem.description = item.description; }
-                        migratedState.fundHistory.push(newHistoryItem);
-                    });
-                }
-                state = migratedState;
-            } else {
-                state = { ...state, ...loadedState };
-            }
+        // Merge loaded state with defaults to ensure all keys are present
+        state = { ...defaultState, ...loadedState };
 
-            // --- Data Migration: v2 -> v3 (Mileage Rate to Settings) ---
-            if (loadedState.mileageRate) {
-                console.log("Migrating mileage data to v3...");
-                // Keep the old rate as the convenience fee and use defaults for others
-                state.mileageSettings = {
-                    mpg: 25,
-                    gasCost: 3.75,
-                    maintenance: 0.05,
-                    convenience: loadedState.mileageRate - 0.20, // Approximate
-                };
-                delete state.mileageRate; // Remove old key
-            }
-
-            // --- Backward Compatibility Checks ---
-            state.mileageHistory.forEach(item => { if (!item.type) item.type = 'trip'; });
-            if (!state.whiteboard) state.whiteboard = [];
-            if (!state.mileageSettings) state.mileageSettings = { mpg: 25, gasCost: 3.75, maintenance: 0.05, convenience: 0.05 };
-            if (!state.chores) state.chores = [];
-            if (!state.completedChores) state.completedChores = [];
-
-            purgeOldCompletedChores();
-
-            // --- Data Migration: v3 -> v4 (Add Expense Categories) ---
-            let migrationNeeded = false;
-            state.fundHistory.forEach(item => {
-                if (item.type === 'expense' && !item.category) {
-                    item.category = 'Other';
-                    migrationNeeded = true;
-                }
+        // Initialize contributions object if it's missing or doesn't match roommates
+        const currentContribKeys = Object.keys(state.contributions);
+        if (state.roommates.length !== currentContribKeys.length || !state.roommates.every(r => currentContribKeys.includes(r))) {
+            const newContributions = {};
+            state.roommates.forEach(r => {
+                newContributions[r] = state.contributions[r] || 0;
             });
-            if (migrationNeeded) console.log("Migrating expense data to v4...");
-
-            saveData();
+            state.contributions = newContributions;
         }
+
+        // Simple migration for whiteboard messages to include a person
+        state.whiteboard.forEach(item => {
+            if (!item.person) {
+                item.person = state.roommates[0]; // Default to first roommate
+            }
+        });
+
+        purgeOldCompletedChores();
+        saveData();
     }
 
     // --- Calculation Helpers ---
     function calculateEffectiveRate() {
         const s = state.mileageSettings;
-        if (s.mpg === 0) return s.maintenance + s.convenience; // Avoid division by zero
+        if (s.mpg === 0) return s.maintenance + s.convenience;
         return (s.gasCost / s.mpg) + s.maintenance + s.convenience;
     }
 
@@ -167,6 +133,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Rendering ---
     function render() {
+        // Update UI elements that depend on roommate names first
+        document.querySelector('label[for="contribution-person"]').textContent = 'Contributor:';
+        document.querySelector('.contribution-stats p:nth-child(1) b').textContent = `${getPersonName(0)}:`;
+        document.querySelector('.contribution-stats p:nth-child(2) b').textContent = `${getPersonName(1)}:`;
+        document.querySelector('h2').textContent = `${getPersonName(0)} & ${getPersonName(1)}'s Expense Tracker`;
+        document.querySelector('.main-title').textContent = `${getPersonName(0)[0]}&${getPersonName(1)[0]} Tracker`;
+        document.querySelector('.whiteboard-post-btn[data-person="Sage"]').textContent = `Post as ${getPersonName(0)}`;
+        document.querySelector('.whiteboard-post-btn[data-person="Emily"]').textContent = `Post as ${getPersonName(1)}`;
+
+
         // Render Fund
         fundBalanceEl.textContent = `$${state.fundBalance.toFixed(2)}`;
         fundHistoryEl.innerHTML = '';
@@ -174,47 +150,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             const originalIndex = state.fundHistory.length - 1 - index;
             const date = new Date(item.date).toLocaleString();
-            let description = '', sign = '', color = '';
             let content;
 
             if (item.type === 'contribution') {
-                description = `${item.person} contributed`;
-                sign = '+';
-                color = 'green';
-                content = `<div>${description} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
+                const personClass = getPersonClass(item.person);
+                content = `<div><span class="person-name ${personClass}">${item.person}</span> contributed <span style="color: green;">+$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
             } else {
-                description = item.description;
-                sign = '-';
-                color = 'red';
                 const categoryLabel = item.category ? ` <span class="category-chip">${item.category}</span>` : '';
-                content = `<div>${description}${categoryLabel} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
+                content = `<div>${item.description}${categoryLabel} <span style="color: red;">-$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
             }
-
-            const deleteBtn = `<button class="delete-btn" data-type="fund" data-index="${originalIndex}">&times;</button>`;
-            li.innerHTML = `<div>${content}</div>${deleteBtn}`;
+            li.innerHTML = `<div>${content}</div><button class="delete-btn" data-type="fund" data-index="${originalIndex}">&times;</button>`;
             fundHistoryEl.appendChild(li);
         });
 
         // Render Analytics
-        const sageTotal = state.contributions.Sage, emilyTotal = state.contributions.Emily;
-        sageTotalContribEl.textContent = `$${sageTotal.toFixed(2)}`;
-        emilyTotalContribEl.textContent = `$${emilyTotal.toFixed(2)}`;
-        const sageAvg = calculateMonthlyAverage('Sage'), emilyAvg = calculateMonthlyAverage('Emily');
-        sageAvgContribEl.textContent = `$${sageAvg.toFixed(2)}`;
-        emilyAvgContribEl.textContent = `$${emilyAvg.toFixed(2)}`;
-        const diff = sageTotal - emilyTotal;
-        if (diff > 0) { equalizerTextEl.textContent = `Emily needs to add $${diff.toFixed(2)} to catch up.`; }
-        else if (diff < 0) { equalizerTextEl.textContent = `Sage needs to add $${Math.abs(diff).toFixed(2)} to catch up.`; }
-        else { equalizerTextEl.textContent = 'Contributions are perfectly balanced.'; }
+        const [p1, p2] = state.roommates;
+        const p1Total = state.contributions[p1] || 0, p2Total = state.contributions[p2] || 0;
+        sageTotalContribEl.textContent = `$${p1Total.toFixed(2)}`;
+        emilyTotalContribEl.textContent = `$${p2Total.toFixed(2)}`;
+        const p1Avg = calculateMonthlyAverage(p1), p2Avg = calculateMonthlyAverage(p2);
+        sageAvgContribEl.textContent = `$${p1Avg.toFixed(2)}`;
+        emilyAvgContribEl.textContent = `$${p2Avg.toFixed(2)}`;
+        const diff = p1Total - p2Total;
+        if (diff > 5) { equalizerTextEl.innerHTML = `<span class="person-name ${getPersonClass(p2)}">${p2}</span> needs to add <b>$${diff.toFixed(2)}</b> to catch up.`; }
+        else if (diff < -5) { equalizerTextEl.innerHTML = `<span class="person-name ${getPersonClass(p1)}">${p1}</span> needs to add <b>$${Math.abs(diff).toFixed(2)}</b> to catch up.`; }
+        else { equalizerTextEl.textContent = 'Contributions are balanced.'; }
 
         // Render Mileage
         mileageTotalEl.textContent = `$${state.mileageTotal.toFixed(2)}`;
-        mpgInput.value = state.mileageSettings.mpg;
-        gasCostInput.value = state.mileageSettings.gasCost;
-        maintenanceFeeInput.value = state.mileageSettings.maintenance;
-        convenienceFeeInput.value = state.mileageSettings.convenience;
         effectiveRateEl.textContent = calculateEffectiveRate().toFixed(2);
-
         mileageHistoryEl.innerHTML = '';
         state.mileageHistory.slice().reverse().forEach((item, index) => {
             const li = document.createElement('li');
@@ -226,8 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 content = `<div>${item.description} (${item.miles} miles) <span>$${item.cost.toFixed(2)}</span></div><small>${date}</small>`;
             }
-            const deleteBtn = `<button class="delete-btn" data-type="mileage" data-index="${originalIndex}">&times;</button>`;
-            li.innerHTML = `<div>${content}</div>${deleteBtn}`;
+            li.innerHTML = `<div>${content}</div><button class="delete-btn" data-type="mileage" data-index="${originalIndex}">&times;</button>`;
             mileageHistoryEl.appendChild(li);
         });
 
@@ -237,23 +200,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             const originalIndex = state.whiteboard.length - 1 - index;
             const date = new Date(item.date).toLocaleString();
+            const personClass = getPersonClass(item.person);
 
-            const contentDiv = document.createElement('div');
-            contentDiv.innerHTML = `<span>${item.message}</span><small style="align-self: flex-end;">${date}</small>`;
-            contentDiv.style.display = 'flex';
-            contentDiv.style.flexDirection = 'column';
-            contentDiv.style.alignItems = 'flex-start';
-            contentDiv.style.flexGrow = '1';
-
-            const deleteBtn = `<button class="delete-btn" data-type="whiteboard" data-index="${originalIndex}">&times;</button>`;
-
-            li.appendChild(contentDiv);
-            li.insertAdjacentHTML('beforeend', deleteBtn);
+            li.innerHTML = `
+                <div style="flex-grow: 1;">
+                    <p style="margin: 0; padding: 0; font-weight: normal;">${item.message}</p>
+                    <small>Posted by <span class="person-name ${personClass}">${item.person}</span> - ${date}</small>
+                </div>
+                <button class="delete-btn" data-type="whiteboard" data-index="${originalIndex}">&times;</button>
+            `;
             whiteboardListEl.appendChild(li);
         });
 
+        // Render Dropdowns
+        populateDropdown(contributionPersonEl, state.roommates);
+        populateDropdown(expenseCategoryEl, state.expenseCategories);
+
         renderCharts();
         renderChores();
+        renderSettings();
+    }
+
+    function populateDropdown(selectElement, options) {
+        const currentValue = selectElement.value;
+        selectElement.innerHTML = '';
+        options.forEach(option => {
+            const optionEl = document.createElement('option');
+            optionEl.value = option;
+            optionEl.textContent = option;
+            selectElement.appendChild(optionEl);
+        });
+        if (options.includes(currentValue)) {
+            selectElement.value = currentValue;
+        }
     }
 
     function renderChores() {
@@ -261,49 +240,19 @@ document.addEventListener('DOMContentLoaded', () => {
         recurringChoreListEl.innerHTML = '';
         completedChoreListEl.innerHTML = '';
         const now = new Date();
+        const [p1, p2] = state.roommates;
 
         const oneTimeChores = state.chores.filter(c => c.isOneTime);
         const recurringChores = state.chores.filter(c => !c.isOneTime);
 
-        // Render One-Time Chores
-        if (oneTimeChores.length === 0) {
-            oneTimeChoreListEl.innerHTML = '<li>No one-time chores.</li>';
-        } else {
-            oneTimeChores.sort((a, b) => new Date(a.creationDate) - new Date(b.creationDate)).forEach(chore => {
-                const li = document.createElement('li');
-                const age = Math.floor((now - new Date(chore.creationDate)) / (1000 * 60 * 60 * 24));
-                const ageText = age > 0 ? ` (added ${age}d ago)` : ' (added today)';
-                li.className = 'chore-item';
-                li.innerHTML = `
-                    <div class="chore-info">
-                        <span class="chore-description">${chore.description}</span>
-                        <small class="chore-last-completed">Added ${new Date(chore.creationDate).toLocaleDateString()}${ageText}</small>
-                    </div>
-                    <div class="chore-actions">
-                        <button class="chore-btn sage" data-chore-id="${chore.id}" data-person="Sage">Sage did it</button>
-                        <button class="chore-btn emily" data-chore-id="${chore.id}" data-person="Emily">Emily did it</button>
-                    </div>
-                `;
-                oneTimeChoreListEl.appendChild(li);
-            });
-        }
-
-        // Render Recurring Chores
-        if (recurringChores.length === 0) {
-            recurringChoreListEl.innerHTML = '<li>No recurring chores.</li>';
-        } else {
-            recurringChores.sort((a, b) => {
-                const aDueDate = a.lastCompletedDate ? new Date(new Date(a.lastCompletedDate).getTime() + a.durationDays * 86400000) : now;
-                const bDueDate = b.lastCompletedDate ? new Date(new Date(b.lastCompletedDate).getTime() + b.durationDays * 86400000) : now;
-                return aDueDate - bDueDate;
-            }).forEach(chore => {
-                const li = document.createElement('li');
-                li.className = 'chore-item';
-
+        const renderChoreItem = (chore, isRecurring) => {
+            const personClass1 = getPersonClass(p1);
+            const personClass2 = getPersonClass(p2);
+            let timerHtml = '';
+            if (isRecurring) {
                 const lastCompletedDate = chore.lastCompletedDate ? new Date(chore.lastCompletedDate) : null;
                 const dueDate = lastCompletedDate ? new Date(lastCompletedDate.getTime() + chore.durationDays * 86400000) : null;
                 let timerText = 'New', timerColor = 'blue';
-
                 if (dueDate) {
                     const diffTime = dueDate - now;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -312,217 +261,171 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (diffDays === 0) { timerText = 'Due today'; timerColor = 'red'; }
                     else { timerText = `Overdue by ${-diffDays} day(s)`; timerColor = 'darkred'; }
                 }
+                const lastCompletedByClass = chore.lastCompletedBy ? getPersonClass(chore.lastCompletedBy) : '';
+                const lastCompletedText = chore.lastCompletedBy ? `Last done by <span class="person-name ${lastCompletedByClass}">${chore.lastCompletedBy}</span> on ${lastCompletedDate.toLocaleDateString()}` : 'Not yet completed';
+                timerHtml = `
+                    <div class="chore-status">
+                        <span class="chore-timer" style="color: ${timerColor};">${timerText}</span>
+                        <div class="chore-actions">
+                            <button class="chore-btn ${personClass1}" data-chore-id="${chore.id}" data-person="${p1}">${p1} did it</button>
+                            <button class="chore-btn ${personClass2}" data-chore-id="${chore.id}" data-person="${p2}">${p2} did it</button>
+                        </div>
+                    </div>`;
+            } else {
+                 timerHtml = `<div class="chore-actions">
+                        <button class="chore-btn ${personClass1}" data-chore-id="${chore.id}" data-person="${p1}">${p1} did it</button>
+                        <button class="chore-btn ${personClass2}" data-chore-id="${chore.id}" data-person="${p2}">${p2} did it</button>
+                    </div>`;
+            }
 
-                const lastCompletedText = chore.lastCompletedBy ? `Last done by ${chore.lastCompletedBy} on ${lastCompletedDate.toLocaleDateString()}` : 'Not yet completed';
-                li.innerHTML = `
+            const age = Math.floor((now - new Date(chore.creationDate)) / (1000 * 60 * 60 * 24));
+            const ageText = age > 0 ? ` (added ${age}d ago)` : ' (added today)';
+            const lastCompletedText = isRecurring ? (chore.lastCompletedBy ? `Last done by <span class="person-name ${getPersonClass(chore.lastCompletedBy)}">${chore.lastCompletedBy}</span> on ${new Date(chore.lastCompletedDate).toLocaleDateString()}` : 'Not yet completed') : `Added ${new Date(chore.creationDate).toLocaleDateString()}${ageText}`;
+
+            return `
+                <li class="chore-item">
                     <div class="chore-info">
                         <span class="chore-description">${chore.description}</span>
                         <small class="chore-last-completed">${lastCompletedText}</small>
                     </div>
-                    <div class="chore-status">
-                        <span class="chore-timer" style="color: ${timerColor};">${timerText}</span>
-                        <div class="chore-actions">
-                            <button class="chore-btn sage" data-chore-id="${chore.id}" data-person="Sage">Sage did it</button>
-                            <button class="chore-btn emily" data-chore-id="${chore.id}" data-person="Emily">Emily did it</button>
-                        </div>
-                    </div>
-                `;
-                recurringChoreListEl.appendChild(li);
-            });
-        }
+                    ${timerHtml}
+                </li>`;
+        };
 
-        // Render Completed Chores
-        if (state.completedChores.length === 0) {
-            completedChoreListEl.innerHTML = '<li>No chores completed recently.</li>';
-        } else {
-            state.completedChores.sort((a,b) => new Date(b.completionDate) - new Date(a.completionDate)).forEach(chore => {
-                const li = document.createElement('li');
-                li.className = 'chore-item completed';
-                li.innerHTML = `
+        if (oneTimeChores.length === 0) oneTimeChoreListEl.innerHTML = '<li>No one-time chores.</li>';
+        else oneTimeChores.sort((a,b) => new Date(a.creationDate) - new Date(b.creationDate)).forEach(c => oneTimeChoreListEl.innerHTML += renderChoreItem(c, false));
+
+        if (recurringChores.length === 0) recurringChoreListEl.innerHTML = '<li>No recurring chores.</li>';
+        else recurringChores.sort((a, b) => {
+                const aDueDate = a.lastCompletedDate ? new Date(new Date(a.lastCompletedDate).getTime() + a.durationDays * 86400000) : now;
+                const bDueDate = b.lastCompletedDate ? new Date(new Date(b.lastCompletedDate).getTime() + b.durationDays * 86400000) : now;
+                return aDueDate - bDueDate;
+            }).forEach(c => recurringChoreListEl.innerHTML += renderChoreItem(c, true));
+
+        if (state.completedChores.length === 0) completedChoreListEl.innerHTML = '<li>No chores completed recently.</li>';
+        else state.completedChores.sort((a,b) => new Date(b.completionDate) - new Date(a.completionDate)).forEach(chore => {
+            const personClass = getPersonClass(chore.lastCompletedBy);
+            completedChoreListEl.innerHTML += `
+                <li class="chore-item completed">
                     <div class="chore-info">
                         <span class="chore-description">${chore.description}</span>
-                        <small class="chore-last-completed">Completed by ${chore.lastCompletedBy} on ${new Date(chore.completionDate).toLocaleDateString()}</small>
+                        <small class="chore-last-completed">Completed by <span class="person-name ${personClass}">${chore.lastCompletedBy}</span> on ${new Date(chore.completionDate).toLocaleDateString()}</small>
                     </div>
-                `;
-                completedChoreListEl.appendChild(li);
-            });
-        }
+                </li>`;
+        });
     }
 
     function renderCharts() {
         const isDarkMode = document.body.classList.contains('dark-mode');
         const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
         const textColor = isDarkMode ? '#ecf0f1' : '#333';
+        if (contributionChart) contributionChart.destroy();
+        if (categoryChart) categoryChart.destroy();
 
-        // Destroy existing charts if they exist
-        if (contributionChart) { contributionChart.destroy(); }
-        if (categoryChart) { categoryChart.destroy(); }
+        const [p1, p2] = state.roommates;
+        const p1Class = getPersonClass(p1);
+        const p2Class = getPersonClass(p2);
 
-        // --- Contribution History Chart (Line) ---
+        // Contribution Chart
         const contributionCtx = document.getElementById('contribution-chart').getContext('2d');
         const contributions = state.fundHistory.filter(item => item.type === 'contribution');
-
         if (contributions.length > 0) {
-            // Sort by date to ensure the timeline is correct
             contributions.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            const labels = [];
-            const sageData = [];
-            const emilyData = [];
-            let sageCumulative = 0;
-            let emilyCumulative = 0;
-
-            // Use a Map to group contributions by date (day)
             const dailyContributions = new Map();
             contributions.forEach(c => {
                 const date = new Date(c.date).toLocaleDateString();
-                if (!dailyContributions.has(date)) {
-                    dailyContributions.set(date, { Sage: 0, Emily: 0 });
-                }
+                if (!dailyContributions.has(date)) dailyContributions.set(date, { [p1]: 0, [p2]: 0 });
                 dailyContributions.get(date)[c.person] += c.amount;
             });
-
-            // Process the aggregated data
+            const labels = [], p1Data = [], p2Data = [];
+            let p1Cumulative = 0, p2Cumulative = 0;
             for (const [date, dailyTotal] of dailyContributions.entries()) {
                 labels.push(date);
-                sageCumulative += dailyTotal.Sage;
-                emilyCumulative += dailyTotal.Emily;
-                sageData.push(sageCumulative);
-                emilyData.push(emilyCumulative);
+                p1Cumulative += dailyTotal[p1];
+                p2Cumulative += dailyTotal[p2];
+                p1Data.push(p1Cumulative);
+                p2Data.push(p2Cumulative);
             }
-
             contributionChart = new Chart(contributionCtx, {
                 type: 'line',
                 data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Sage\'s Cumulative Contributions',
-                            data: sageData,
-                            borderColor: '#3498db', // Blue
-                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                            fill: true,
-                            tension: 0.1
-                        },
-                        {
-                            label: 'Emily\'s Cumulative Contributions',
-                            data: emilyData,
-                            borderColor: '#9b59b6', // Purple
-                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
-                            fill: true,
-                            tension: 0.1
-                        }
-                    ]
+                    labels,
+                    datasets: [{
+                        label: `${p1}'s Contributions`, data: p1Data, borderColor: p1Class === 'sage' ? '#9b59b6' : '#3498db', backgroundColor: p1Class === 'sage' ? 'rgba(155, 89, 182, 0.1)' : 'rgba(52, 152, 219, 0.1)', fill: true, tension: 0.1
+                    }, {
+                        label: `${p2}'s Contributions`, data: p2Data, borderColor: p2Class === 'emily' ? '#3498db' : '#9b59b6', backgroundColor: p2Class === 'emily' ? 'rgba(52, 152, 219, 0.1)' : 'rgba(155, 89, 182, 0.1)', fill: true, tension: 0.1
+                    }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { color: textColor },
-                            grid: { color: gridColor }
-                        },
-                        x: {
-                            ticks: { color: textColor },
-                            grid: { color: gridColor }
-                        }
-                    },
-                    plugins: {
-                        legend: { labels: { color: textColor } }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { labels: { color: textColor } } } }
             });
         }
 
-
-        // --- Expense Category Chart (Pie) ---
+        // Category Chart
         const categoryCtx = document.getElementById('category-chart').getContext('2d');
         const categoryTotals = {};
         let totalExpenses = 0;
-
         state.fundHistory.forEach(item => {
             if (item.type === 'expense') {
                 const amount = Math.abs(item.amount);
-                if (!categoryTotals[item.category]) {
-                    categoryTotals[item.category] = 0;
-                }
+                if (!categoryTotals[item.category]) categoryTotals[item.category] = 0;
                 categoryTotals[item.category] += amount;
                 totalExpenses += amount;
             }
         });
-
         if (totalExpenses > 0) {
             const categoryLabels = Object.keys(categoryTotals);
             const categoryData = Object.values(categoryTotals);
-            const backgroundColors = [
-                '#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6',
-                '#1abc9c', '#e67e22', '#34495e', '#d35400', '#c0392b'
-            ];
-
             categoryChart = new Chart(categoryCtx, {
                 type: 'pie',
                 data: {
                     labels: categoryLabels,
-                    datasets: [{
-                        data: categoryData,
-                        backgroundColor: backgroundColors.slice(0, categoryLabels.length),
-                        borderWidth: 1,
-                        borderColor: isDarkMode ? '#34495e' : '#ffffff'
-                    }]
+                    datasets: [{ data: categoryData, backgroundColor: ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'], borderWidth: 1, borderColor: isDarkMode ? '#34495e' : '#ffffff' }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: { color: textColor }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    const value = context.parsed;
-                                    const percentage = ((value / totalExpenses) * 100).toFixed(1);
-                                    label += `$${value.toFixed(2)} (${percentage}%)`;
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: textColor } }, tooltip: { callbacks: { label: ctx => `${ctx.label}: $${ctx.parsed.toFixed(2)} (${(ctx.parsed / totalExpenses * 100).toFixed(1)}%)` } } } }
             });
         }
     }
 
+    function renderSettings() {
+        // General
+        roommate1NameInput.value = getPersonName(0);
+        roommate2NameInput.value = getPersonName(1);
+        themeToggleSettings.checked = document.body.classList.contains('dark-mode');
+
+        // Mileage
+        mpgInput.value = state.mileageSettings.mpg;
+        gasCostInput.value = state.mileageSettings.gasCost;
+        maintenanceFeeInput.value = state.mileageSettings.maintenance;
+        convenienceFeeInput.value = state.mileageSettings.convenience;
+
+        // Categories
+        expenseCategoryListEl.innerHTML = '';
+        state.expenseCategories.forEach(cat => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${cat}</span><button class="delete-btn delete-category-btn" data-category="${cat}">&times;</button>`;
+            expenseCategoryListEl.appendChild(li);
+        });
+    }
+
     // --- Logic Functions ---
     function recalculateTotals() {
-        // Reset totals to zero
         state.fundBalance = 0;
-        state.contributions = { Sage: 0, Emily: 0 };
-        state.mileageTotal = 0;
-        const effectiveRate = calculateEffectiveRate();
+        state.contributions = {};
+        state.roommates.forEach(r => state.contributions[r] = 0);
 
-        // Recalculate fund history
         state.fundHistory.forEach(item => {
             if (item.type === 'contribution') {
                 state.fundBalance += item.amount;
-                if (state.contributions[item.person] !== undefined) {
-                    state.contributions[item.person] += item.amount;
-                }
+                if (state.contributions[item.person] !== undefined) state.contributions[item.person] += item.amount;
             } else if (item.type === 'expense') {
-                state.fundBalance += item.amount; // amount is negative for expenses
+                state.fundBalance += item.amount;
             }
         });
 
-        // Recalculate mileage history
+        const effectiveRate = calculateEffectiveRate();
+        state.mileageTotal = 0;
         state.mileageHistory.forEach(item => {
             if (item.type === 'trip') {
-                // Ensure cost is updated if settings changed since original logging
                 item.cost = item.miles * effectiveRate;
                 state.mileageTotal += item.cost;
             } else if (item.type === 'payment') {
@@ -531,221 +434,145 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function deleteHistoryItem(type, index, event) {
-        const skipConfirm = event.shiftKey;
-        const confirmed = skipConfirm || confirm('Are you sure you want to delete this item? This action cannot be undone.');
-
-        if (confirmed) {
-            let historyArray;
-            if (type === 'fund') {
-                historyArray = state.fundHistory;
-            } else if (type === 'mileage') {
-                historyArray = state.mileageHistory;
-            } else if (type === 'whiteboard') {
-                historyArray = state.whiteboard;
-            } else {
-                return; // Should not happen
-            }
-
-            historyArray.splice(index, 1);
-
-            if (type === 'fund' || type === 'mileage') {
-                recalculateTotals();
-            }
-
+    function deleteItem(type, index, event) {
+        if (event.shiftKey || confirm('Are you sure you want to delete this item?')) {
+            const array = state[type === 'fund' ? 'fundHistory' : type === 'mileage' ? 'mileageHistory' : 'whiteboard'];
+            array.splice(index, 1);
+            if (type === 'fund' || type === 'mileage') recalculateTotals();
             saveData();
             render();
         }
     }
 
-    function resetAllData() {
-        if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
-            localStorage.removeItem('expenseTrackerState');
-            location.reload();
-        }
-    }
-
+    function resetAllData() { if (confirm('Are you sure? This will delete all data.')) { localStorage.removeItem('expenseTrackerState'); location.reload(); } }
     function exportData() {
         const dataStr = JSON.stringify(state, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'sage-emily-expenses.json';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 's&e-tracker-data.json';
+        a.click();
         URL.revokeObjectURL(url);
     }
-
-    function loadTestData() {
-        if (confirm('Are you sure you want to load test data? This will overwrite all current data.')) {
-            state = generateRandomData(); // This function is from test-data.js
-            saveData();
-            render();
-            alert('Test data loaded and applied!');
-        }
-    }
-
     function importData(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = (event) => {
             try {
                 const importedState = JSON.parse(event.target.result);
-                // Basic validation
-                if (importedState && typeof importedState === 'object' && 'fundBalance' in importedState) {
-                    if (confirm('Are you sure you want to import this data? This will overwrite current data.')) {
-                        state = { ...state, ...importedState };
-                        saveData();
-                        render();
-                        alert('Data imported successfully!');
-                    }
-                } else {
-                    alert('Error: Invalid or corrupted data file.');
+                if (confirm('Import data? This will overwrite current data.')) {
+                    state = { ...defaultState, ...importedState };
+                    saveData();
+                    render();
+                    alert('Import successful!');
                 }
-            } catch (error) {
-                console.error('Error parsing JSON:', error);
-                alert('Error: Could not parse the file. Make sure it is a valid JSON file.');
-            }
+            } catch (err) { alert('Error reading file.'); }
         };
         reader.readAsText(file);
-        // Reset file input so the same file can be loaded again
-        importFileEl.value = '';
+        e.target.value = '';
     }
 
     function addContribution(e) { e.preventDefault(); const p = contributionPersonEl.value, a = parseFloat(contributionAmountEl.value); if(isNaN(a)||a<=0)return; state.fundBalance+=a; state.contributions[p]+=a; state.fundHistory.push({type:'contribution',person:p,amount:a,date:new Date().toISOString()}); contributionAmountEl.value=''; saveData(); render(); }
     function addExpense(e) { e.preventDefault(); const d = expenseDescriptionEl.value, c = expenseCategoryEl.value, a = parseFloat(expenseAmountEl.value); if(!d||!c||isNaN(a)||a<=0)return; state.fundBalance-=a; state.fundHistory.push({type:'expense',description:d,category:c,amount:-a,date:new Date().toISOString()}); expenseDescriptionEl.value=''; expenseAmountEl.value=''; saveData(); render(); }
-    function addMessage(e) { e.preventDefault(); const m=whiteboardMessageEl.value; if(!m)return; state.whiteboard.push({message:m,date:new Date().toISOString()}); whiteboardMessageEl.value=''; saveData(); render(); }
+
+    function addMessage(e) {
+        e.preventDefault();
+        const person = e.submitter.dataset.person === 'Sage' ? state.roommates[0] : state.roommates[1];
+        const message = whiteboardMessageEl.value;
+        if (!message || !person) return;
+        state.whiteboard.push({ message, person, date: new Date().toISOString() });
+        whiteboardMessageEl.value = '';
+        saveData();
+        render();
+    }
+
     function purgeOldCompletedChores() {
-        if (!state.completedChores || state.completedChores.length === 0) return;
-        const thirtyDaysAgo = new Date().getTime() - (30 * 24 * 60 * 60 * 1000);
-        state.completedChores = state.completedChores.filter(chore => {
-            const completedDate = new Date(chore.completionDate).getTime();
-            return completedDate > thirtyDaysAgo;
-        });
+        if (!state.completedChores) state.completedChores = [];
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        state.completedChores = state.completedChores.filter(c => new Date(c.completionDate).getTime() > thirtyDaysAgo);
     }
-
-    function addChore(e) {
-        e.preventDefault();
-        const description = choreDescriptionEl.value;
-        const durationInput = choreDurationEl.value;
-        if (!description) return;
-
-        const isOneTime = !durationInput;
-        const durationDays = isOneTime ? null : parseInt(durationInput, 10);
-
-        if (!isOneTime && (isNaN(durationDays) || durationDays <= 0)) {
-            alert("Please enter a valid number of days for the timer or leave it empty for a one-time chore.");
-            return;
-        }
-
-        const newChore = {
-            id: `chore_${new Date().getTime()}`,
-            description,
-            isOneTime,
-            durationDays,
-            creationDate: new Date().toISOString(),
-            lastCompletedBy: null,
-            lastCompletedDate: null,
-        };
-        state.chores.push(newChore);
-        choreDescriptionEl.value = '';
-        choreDurationEl.value = '';
-        saveData();
-        render();
-    }
-
-    function completeChore(choreId, person) {
-        const choreIndex = state.chores.findIndex(c => c.id === choreId);
-        if (choreIndex === -1) return;
-
-        const chore = state.chores[choreIndex];
-        chore.lastCompletedBy = person;
-        chore.lastCompletedDate = new Date().toISOString();
-
-        if (chore.isOneTime) {
-            chore.completionDate = new Date().toISOString();
-            state.completedChores.push(chore);
-            state.chores.splice(choreIndex, 1);
-        }
-
-        saveData();
-        render();
-    }
-
-    function logTrip(e) {
-        e.preventDefault();
-        const description = tripDescriptionEl.value;
-        const miles = parseFloat(tripMilesEl.value);
-        if (!description || isNaN(miles) || miles <= 0) return;
-
-        const cost = miles * calculateEffectiveRate();
-        state.mileageTotal += cost;
-        state.mileageHistory.push({ type: 'trip', description, miles, cost, date: new Date().toISOString() });
-
-        tripDescriptionEl.value = '';
-        tripMilesEl.value = '';
-        saveData();
-        render();
-    }
-
-    function recordMileagePayment(e) {
-        e.preventDefault();
-        const amount = parseFloat(paymentAmountEl.value);
-        if (isNaN(amount) || amount <= 0) return;
-        state.mileageTotal -= amount;
-        state.mileageHistory.push({ type: 'payment', amount: amount, date: new Date().toISOString() });
-        paymentAmountEl.value = '';
-        saveData();
-        render();
-    }
+    function addChore(e) { e.preventDefault(); const d=choreDescriptionEl.value, t=choreDurationEl.value; if(!d)return; const isOneTime=!t, dur=isOneTime?null:parseInt(t,10); if(!isOneTime&&(isNaN(dur)||dur<=0)){alert('Invalid duration.');return;} state.chores.push({id:`c_${Date.now()}`,description:d,isOneTime,durationDays:dur,creationDate:new Date().toISOString(),lastCompletedBy:null,lastCompletedDate:null}); choreDescriptionEl.value='';choreDurationEl.value=''; saveData(); render(); }
+    function completeChore(id, person) { const i=state.chores.findIndex(c=>c.id===id); if(i===-1)return; const chore=state.chores[i]; chore.lastCompletedBy=person; chore.lastCompletedDate=new Date().toISOString(); if(chore.isOneTime){chore.completionDate=new Date().toISOString();state.completedChores.push(chore);state.chores.splice(i,1);} saveData(); render(); }
+    function logTrip(e) { e.preventDefault(); const d=tripDescriptionEl.value, m=parseFloat(tripMilesEl.value); if(!d||isNaN(m)||m<=0)return; const c=m*calculateEffectiveRate(); state.mileageTotal+=c; state.mileageHistory.push({type:'trip',description:d,miles:m,cost:c,date:new Date().toISOString()}); tripDescriptionEl.value='';tripMilesEl.value=''; saveData(); render(); }
+    function recordMileagePayment(e) { e.preventDefault(); const a=parseFloat(paymentAmountEl.value); if(isNaN(a)||a<=0)return; state.mileageTotal-=a; state.mileageHistory.push({type:'payment',amount:a,date:new Date().toISOString()}); paymentAmountEl.value=''; saveData(); render(); }
 
     function updateMileageSettings() {
-        state.mileageSettings.mpg = parseFloat(mpgInput.value) || 0;
-        state.mileageSettings.gasCost = parseFloat(gasCostInput.value) || 0;
-        state.mileageSettings.maintenance = parseFloat(maintenanceFeeInput.value) || 0;
-        state.mileageSettings.convenience = parseFloat(convenienceFeeInput.value) || 0;
+        state.mileageSettings = { mpg: parseFloat(mpgInput.value)||0, gasCost: parseFloat(gasCostInput.value)||0, maintenance: parseFloat(maintenanceFeeInput.value)||0, convenience: parseFloat(convenienceFeeInput.value)||0 };
+        recalculateTotals();
+        saveData();
+        render();
+    }
 
-        // Recalculate total based on new settings
-        let newTotal = 0;
-        const effectiveRate = calculateEffectiveRate();
-        state.mileageHistory.forEach(item => {
-            if (item.type === 'trip') {
-                item.cost = item.miles * effectiveRate;
-                newTotal += item.cost;
-            } else { // payment
-                newTotal -= item.amount;
-            }
-        });
-        state.mileageTotal = newTotal;
+    function updateRoommateName(index, newName) {
+        const oldName = state.roommates[index];
+        if (!newName || newName === oldName) return;
+
+        // Update name in roommates array
+        state.roommates[index] = newName;
+
+        // Update contributions object
+        if (state.contributions[oldName] !== undefined) {
+            state.contributions[newName] = state.contributions[oldName];
+            delete state.contributions[oldName];
+        }
+
+        // Update history
+        state.fundHistory.forEach(item => { if (item.person === oldName) item.person = newName; });
+        state.chores.forEach(item => { if (item.lastCompletedBy === oldName) item.lastCompletedBy = newName; });
+        state.completedChores.forEach(item => { if (item.lastCompletedBy === oldName) item.lastCompletedBy = newName; });
+        state.whiteboard.forEach(item => { if (item.person === oldName) item.person = newName; });
 
         saveData();
         render();
     }
 
-    // --- Theme Switcher Logic ---
-    function switchTheme(e) { if(e.target.checked){document.body.classList.add('dark-mode');localStorage.setItem('theme','dark');}else{document.body.classList.remove('dark-mode');localStorage.setItem('theme','light');} }
-    function loadTheme() { const theme=localStorage.getItem('theme'); if(theme==='dark'){document.body.classList.add('dark-mode');themeToggle.checked=true;} }
+    function addExpenseCategory(e) {
+        e.preventDefault();
+        const newCategory = newCategoryNameInput.value.trim();
+        if (newCategory && !state.expenseCategories.includes(newCategory)) {
+            state.expenseCategories.push(newCategory);
+            newCategoryNameInput.value = '';
+            saveData();
+            render();
+        }
+    }
+
+    function deleteExpenseCategory(category) {
+        if (state.fundHistory.some(item => item.category === category)) {
+            alert(`Cannot delete category "${category}" as it is used in the fund history.`);
+            return;
+        }
+        if (confirm(`Are you sure you want to delete the category "${category}"?`)) {
+            state.expenseCategories = state.expenseCategories.filter(c => c !== category);
+            saveData();
+            render();
+        }
+    }
+
+    // --- Theme Switcher ---
+    function switchTheme(isDark) {
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        document.body.classList.toggle('dark-mode', isDark);
+        themeToggle.checked = isDark;
+        themeToggleSettings.checked = isDark;
+        renderCharts(); // Re-render charts for color change
+    }
+    function loadTheme() { switchTheme(localStorage.getItem('theme') === 'dark'); }
 
     // --- Event Listeners ---
-    fundHistoryEl.addEventListener('click', (e) => {
+    document.body.addEventListener('click', (e) => {
         if (e.target.matches('.delete-btn')) {
-            deleteHistoryItem(e.target.dataset.type, parseInt(e.target.dataset.index, 10), e);
+            const type = e.target.dataset.type;
+            const index = parseInt(e.target.dataset.index, 10);
+            deleteItem(type, index, e);
         }
-    });
-
-    mileageHistoryEl.addEventListener('click', (e) => {
-        if (e.target.matches('.delete-btn')) {
-            deleteHistoryItem(e.target.dataset.type, parseInt(e.target.dataset.index, 10), e);
+        if (e.target.matches('.chore-btn')) {
+            completeChore(e.target.dataset.choreId, e.target.dataset.person);
         }
-    });
-
-    whiteboardListEl.addEventListener('click', (e) => {
-        if (e.target.matches('.delete-btn')) {
-            deleteHistoryItem(e.target.dataset.type, parseInt(e.target.dataset.index, 10), e);
+        if (e.target.matches('.delete-category-btn')) {
+            deleteExpenseCategory(e.target.dataset.category);
         }
     });
 
@@ -753,95 +580,57 @@ document.addEventListener('DOMContentLoaded', () => {
     expenseForm.addEventListener('submit', addExpense);
     mileageForm.addEventListener('submit', logTrip);
     paymentForm.addEventListener('submit', recordMileagePayment);
-    themeToggle.addEventListener('change', switchTheme);
     whiteboardForm.addEventListener('submit', addMessage);
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
     resetButton.addEventListener('click', resetAllData);
     exportButton.addEventListener('click', exportData);
     importButton.addEventListener('click', () => importFileEl.click());
     importFileEl.addEventListener('change', importData);
-    loadTestDataButton.addEventListener('click', loadTestData);
+    loadTestDataButton.addEventListener('click', () => { if(confirm('Load test data? This will overwrite current data.')){state=generateRandomData();saveData();render();}});
     choreForm.addEventListener('submit', addChore);
-    const choreCard = document.querySelectorAll('.card')[3]; // Chores is the 4th card
-    if (choreCard) {
-        choreCard.addEventListener('click', (e) => {
-            if (e.target.matches('.chore-btn')) {
-                const choreId = e.target.dataset.choreId;
-                const person = e.target.dataset.person;
-                completeChore(choreId, person);
-            }
-        });
+    addCategoryForm.addEventListener('submit', addExpenseCategory);
+    roommate1NameInput.addEventListener('change', (e) => updateRoommateName(0, e.target.value));
+    roommate2NameInput.addEventListener('change', (e) => updateRoommateName(1, e.target.value));
+    themeToggle.addEventListener('change', (e) => switchTheme(e.target.checked));
+    themeToggleSettings.addEventListener('change', (e) => switchTheme(e.target.checked));
+
+
+    // --- Card Navigation ---
+    const container = document.querySelector('.container');
+    const cards = document.querySelectorAll('.card');
+    const navLeft = document.getElementById('nav-left');
+    const navRight = document.getElementById('nav-right');
+    const navButtons = document.querySelectorAll('.nav-button');
+    let currentCardIndex = 0;
+
+    function updateNavigation() {
+        navLeft.style.display = currentCardIndex === 0 ? 'none' : 'flex';
+        navRight.style.display = currentCardIndex === cards.length - 1 ? 'none' : 'flex';
+        navButtons.forEach((btn, i) => btn.classList.toggle('active', i === currentCardIndex));
     }
+    function scrollToCard(index, smooth = true) {
+        currentCardIndex = index;
+        container.scrollTo({ left: container.offsetWidth * index, behavior: smooth ? 'smooth' : 'instant' });
+        updateNavigation();
+    }
+    navButtons.forEach((btn, i) => btn.addEventListener('click', () => scrollToCard(i)));
+    navLeft.addEventListener('click', () => { if (currentCardIndex > 0) scrollToCard(currentCardIndex - 1); });
+    navRight.addEventListener('click', () => { if (currentCardIndex < cards.length - 1) scrollToCard(currentCardIndex + 1); });
+    let scrollTimeout;
+    container.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const newIndex = Math.round(container.scrollLeft / container.offsetWidth);
+            if (newIndex !== currentCardIndex) {
+                currentCardIndex = newIndex;
+                updateNavigation();
+            }
+        }, 150);
+    });
 
     // --- Initial Load ---
     loadData();
     loadTheme();
     render();
-
-    // --- Card Navigation Logic ---
-    const container = document.querySelector('.container');
-    const cards = document.querySelectorAll('.card');
-    const navLeft = document.getElementById('nav-left');
-    const navRight = document.getElementById('nav-right');
-    const topNav = document.getElementById('top-nav');
-    const navButtons = document.querySelectorAll('.nav-button');
-    let currentCardIndex = 0;
-
-    function updateNavigationState() {
-        // Update side arrows
-        navLeft.style.display = currentCardIndex === 0 ? 'none' : 'flex';
-        navRight.style.display = currentCardIndex === cards.length - 1 ? 'none' : 'flex';
-
-        // Update top nav buttons
-        navButtons.forEach((btn, index) => {
-            if (index === currentCardIndex) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    }
-
-    function scrollToCard(index) {
-        const cardWidth = container.offsetWidth;
-        container.scrollLeft = cardWidth * index;
-        currentCardIndex = index;
-        updateNavigationState();
-    }
-
-    navLeft.addEventListener('click', () => {
-        if (currentCardIndex > 0) {
-            scrollToCard(currentCardIndex - 1);
-        }
-    });
-
-    navRight.addEventListener('click', () => {
-        if (currentCardIndex < cards.length - 1) {
-            scrollToCard(currentCardIndex + 1);
-        }
-    });
-
-    topNav.addEventListener('click', (e) => {
-        if (e.target.matches('.nav-button')) {
-            const index = parseInt(e.target.dataset.index, 10);
-            scrollToCard(index);
-        }
-    });
-
-    // Also update on scroll (e.g., if user swipes)
-    let scrollTimeout;
-    container.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            const cardWidth = container.offsetWidth;
-            const newIndex = Math.round(container.scrollLeft / cardWidth);
-            if (newIndex !== currentCardIndex) {
-                currentCardIndex = newIndex;
-                updateNavigationState();
-            }
-        }, 150); // Debounce to avoid excessive calculations during scroll
-    });
-
-    // Initial state
-    updateNavigationState();
+    updateNavigation();
 });

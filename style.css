@@ -463,12 +463,23 @@ input:checked + .slider:before {
     opacity: 0.8;
 }
 
-.chore-btn.sage {
-    background-color: #3498db; /* Blue */
+.chore-btn.sage, .person-name.sage {
+    color: #9b59b6 !important; /* Purple */
+    background-color: #9b59b6;
 }
 
-.chore-btn.emily {
-    background-color: #9b59b6; /* Purple */
+.chore-btn.emily, .person-name.emily {
+    color: #3498db !important; /* Blue */
+    background-color: #3498db;
+}
+
+.chore-btn.sage, .chore-btn.emily {
+    color: white !important;
+}
+
+.person-name {
+    font-weight: bold;
+    background-color: transparent !important;
 }
 
 /* Delete Button Styles */
