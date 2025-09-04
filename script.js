@@ -493,4 +493,52 @@ document.addEventListener('DOMContentLoaded', () => {
     loadData();
     loadTheme();
     render();
+
+    // --- Card Navigation Logic ---
+    const container = document.querySelector('.container');
+    const cards = document.querySelectorAll('.card');
+    const navLeft = document.getElementById('nav-left');
+    const navRight = document.getElementById('nav-right');
+    let currentCardIndex = 0;
+
+    function updateNavButtons() {
+        navLeft.style.display = currentCardIndex === 0 ? 'none' : 'flex';
+        navRight.style.display = currentCardIndex === cards.length - 1 ? 'none' : 'flex';
+    }
+
+    function scrollToCard(index) {
+        const cardWidth = container.offsetWidth;
+        container.scrollLeft = cardWidth * index;
+        currentCardIndex = index;
+        updateNavButtons();
+    }
+
+    navLeft.addEventListener('click', () => {
+        if (currentCardIndex > 0) {
+            scrollToCard(currentCardIndex - 1);
+        }
+    });
+
+    navRight.addEventListener('click', () => {
+        if (currentCardIndex < cards.length - 1) {
+            scrollToCard(currentCardIndex + 1);
+        }
+    });
+
+    // Also update on scroll (e.g., if user swipes)
+    let scrollTimeout;
+    container.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const cardWidth = container.offsetWidth;
+            const newIndex = Math.round(container.scrollLeft / cardWidth);
+            if (newIndex !== currentCardIndex) {
+                currentCardIndex = newIndex;
+                updateNavButtons();
+            }
+        }, 150); // Debounce to avoid excessive calculations during scroll
+    });
+
+    // Initial state
+    updateNavButtons();
 });

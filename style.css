@@ -35,20 +35,26 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     margin: 0;
-    padding: 20px;
+    padding: 0; /* Remove padding */
     display: flex;
     flex-direction: column;
     align-items: center;
     transition: background-color 0.3s, color 0.3s;
+    height: 100vh; /* Ensure body takes full height */
+    overflow: hidden; /* Prevent body from scrolling */
 }
 
 .header {
     width: 100%;
-    max-width: 1000px;
+    /* max-width: 1000px; */ /* Remove max-width */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    padding: 10px 20px; /* Add some padding */
+    box-sizing: border-box; /* Include padding in width */
+    background-color: var(--card-bg-color);
+    box-shadow: var(--card-shadow);
+    z-index: 100;
 }
 
 .header-controls {
@@ -92,11 +98,18 @@ h2 {
 
 .container {
     display: flex;
-    gap: 20px;
+    gap: 0; /* Remove gap as items are full-width */
     width: 100%;
-    max-width: 1000px;
-    justify-content: center;
-    flex-wrap: wrap;
+    overflow-x: scroll;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    /* Hide scrollbar for a cleaner look */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+.container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, and Opera */
 }
 
 .card {
@@ -104,10 +117,44 @@ h2 {
     border-radius: 8px;
     box-shadow: var(--card-shadow);
     padding: 20px;
-    flex: 1;
-    min-width: 300px;
-    max-width: 480px;
+    flex: 0 0 100%; /* Don't grow, don't shrink, take 100% width */
+    width: 100%;
+    scroll-snap-align: start;
     transition: background-color 0.3s;
+    box-sizing: border-box; /* Include padding in the width calculation */
+    height: 90vh;
+    overflow-y: auto;
+}
+
+.nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1000;
+    user-select: none; /* Prevents text selection on double-click */
+    transition: background-color 0.3s;
+}
+
+.nav-arrow:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.nav-arrow.left {
+    left: 15px;
+}
+
+.nav-arrow.right {
+    right: 15px;
 }
 
 .fund-analytics {
