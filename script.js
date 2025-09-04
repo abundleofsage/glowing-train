@@ -43,6 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Category Breakdown DOM Elements
     const categoryBreakdownListEl = document.getElementById('category-breakdown-list');
 
+    // Chore DOM Elements
+    const choreForm = document.getElementById('chore-form');
+    const choreDescriptionEl = document.getElementById('chore-description');
+    const choreDurationEl = document.getElementById('chore-duration');
+    const choreListEl = document.getElementById('chore-list');
+
     // Control DOM Elements
     const resetButton = document.getElementById('reset-button');
     const exportButton = document.getElementById('export-button');
@@ -63,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         mileageHistory: [],
         whiteboard: [],
+        chores: [],
     };
 
     // --- Data Persistence & Migration ---
@@ -111,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.mileageHistory.forEach(item => { if (!item.type) item.type = 'trip'; });
             if (!state.whiteboard) state.whiteboard = [];
             if (!state.mileageSettings) state.mileageSettings = { mpg: 25, gasCost: 3.75, maintenance: 0.05, convenience: 0.05 };
+            if (!state.chores) state.chores = [];
 
             // --- Data Migration: v3 -> v4 (Add Expense Categories) ---
             let migrationNeeded = false;
@@ -217,6 +225,71 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         renderCategoryBreakdown();
+        renderChores();
+    }
+
+    function renderChores() {
+        choreListEl.innerHTML = '';
+        if (state.chores.length === 0) {
+            choreListEl.innerHTML = '<li>No chores added yet. Add one above!</li>';
+            return;
+        }
+
+        const now = new Date();
+        const sortedChores = [...state.chores].sort((a, b) => {
+            const aDueDate = a.lastCompletedDate ? new Date(new Date(a.lastCompletedDate).getTime() + a.durationDays * 86400000) : now;
+            const bDueDate = b.lastCompletedDate ? new Date(new Date(b.lastCompletedDate).getTime() + b.durationDays * 86400000) : now;
+            return aDueDate - bDueDate;
+        });
+
+        sortedChores.forEach(chore => {
+            const li = document.createElement('li');
+            li.className = 'chore-item';
+
+            const lastCompletedDate = chore.lastCompletedDate ? new Date(chore.lastCompletedDate) : null;
+            const dueDate = lastCompletedDate ? new Date(lastCompletedDate.getTime() + chore.durationDays * 86400000) : null;
+
+            let timerText = 'New';
+            let timerColor = 'blue';
+
+            if (dueDate) {
+                const diffTime = dueDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 1) {
+                    timerText = `Due in ${diffDays} days`;
+                    timerColor = 'green';
+                } else if (diffDays === 1) {
+                    timerText = 'Due tomorrow';
+                    timerColor = 'orange';
+                } else if (diffDays === 0) {
+                    timerText = 'Due today';
+                    timerColor = 'red';
+                } else {
+                    timerText = `Overdue by ${-diffDays} day(s)`;
+                    timerColor = 'darkred';
+                }
+            }
+
+            const lastCompletedText = chore.lastCompletedBy
+                ? `Last done by ${chore.lastCompletedBy} on ${lastCompletedDate.toLocaleDateString()}`
+                : 'Not yet completed';
+
+            li.innerHTML = `
+                <div class="chore-info">
+                    <span class="chore-description">${chore.description}</span>
+                    <small class="chore-last-completed">${lastCompletedText}</small>
+                </div>
+                <div class="chore-status">
+                    <span class="chore-timer" style="color: ${timerColor};">${timerText}</span>
+                    <div class="chore-actions">
+                        <button class="chore-btn sage" data-chore-id="${chore.id}" data-person="Sage">Sage did it</button>
+                        <button class="chore-btn emily" data-chore-id="${chore.id}" data-person="Emily">Emily did it</button>
+                    </div>
+                </div>
+            `;
+            choreListEl.appendChild(li);
+        });
     }
 
     function renderCategoryBreakdown() {
@@ -311,6 +384,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function addContribution(e) { e.preventDefault(); const p = contributionPersonEl.value, a = parseFloat(contributionAmountEl.value); if(isNaN(a)||a<=0)return; state.fundBalance+=a; state.contributions[p]+=a; state.fundHistory.push({type:'contribution',person:p,amount:a,date:new Date().toISOString()}); contributionAmountEl.value=''; saveData(); render(); }
     function addExpense(e) { e.preventDefault(); const d = expenseDescriptionEl.value, c = expenseCategoryEl.value, a = parseFloat(expenseAmountEl.value); if(!d||!c||isNaN(a)||a<=0)return; state.fundBalance-=a; state.fundHistory.push({type:'expense',description:d,category:c,amount:-a,date:new Date().toISOString()}); expenseDescriptionEl.value=''; expenseAmountEl.value=''; saveData(); render(); }
     function addMessage(e) { e.preventDefault(); const m=whiteboardMessageEl.value; if(!m)return; state.whiteboard.push({message:m,date:new Date().toISOString()}); whiteboardMessageEl.value=''; saveData(); render(); }
+    function addChore(e) {
+        e.preventDefault();
+        const description = choreDescriptionEl.value;
+        const durationDays = parseInt(choreDurationEl.value, 10);
+        if (!description || isNaN(durationDays) || durationDays <= 0) return;
+
+        const newChore = {
+            id: `chore_${new Date().getTime()}`,
+            description,
+            durationDays,
+            lastCompletedBy: null,
+            lastCompletedDate: null,
+        };
+        state.chores.push(newChore);
+        choreDescriptionEl.value = '';
+        choreDurationEl.value = '';
+        saveData();
+        render();
+    }
+
+    function completeChore(choreId, person) {
+        const chore = state.chores.find(c => c.id === choreId);
+        if (chore) {
+            chore.lastCompletedBy = person;
+            chore.lastCompletedDate = new Date().toISOString();
+            saveData();
+            render();
+        }
+    }
 
     function logTrip(e) {
         e.preventDefault();
@@ -378,6 +480,14 @@ document.addEventListener('DOMContentLoaded', () => {
     exportButton.addEventListener('click', exportData);
     importButton.addEventListener('click', () => importFileEl.click());
     importFileEl.addEventListener('change', importData);
+    choreForm.addEventListener('submit', addChore);
+    choreListEl.addEventListener('click', (e) => {
+        if (e.target.matches('.chore-btn')) {
+            const choreId = e.target.dataset.choreId;
+            const person = e.target.dataset.person;
+            completeChore(choreId, person);
+        }
+    });
 
     // --- Initial Load ---
     loadData();

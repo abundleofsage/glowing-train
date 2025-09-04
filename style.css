@@ -322,3 +322,65 @@ input:checked + .slider:before {
     border-radius: 4px;
     transition: width 0.5s ease-in-out;
 }
+
+/* Chore Styles */
+.chore-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.chore-info {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.chore-description {
+    font-weight: bold;
+}
+
+.chore-last-completed {
+    font-size: 0.8rem;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.chore-status {
+    text-align: right;
+}
+
+.chore-timer {
+    font-weight: bold;
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.chore-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.chore-btn {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: opacity 0.3s;
+}
+
+.chore-btn:hover {
+    opacity: 0.8;
+}
+
+.chore-btn.sage {
+    background-color: #3498db; /* Blue */
+}
+
+.chore-btn.emily {
+    background-color: #9b59b6; /* Purple */
+}
