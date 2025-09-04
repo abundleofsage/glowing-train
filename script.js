@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const contributionAmountEl = document.getElementById('contribution-amount');
     const expenseForm = document.getElementById('expense-form');
     const expenseDescriptionEl = document.getElementById('expense-description');
+    const expenseCategoryEl = document.getElementById('expense-category');
     const expenseAmountEl = document.getElementById('expense-amount');
     const fundHistoryEl = document.getElementById('fund-history');
 
@@ -38,6 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const whiteboardForm = document.getElementById('whiteboard-form');
     const whiteboardMessageEl = document.getElementById('whiteboard-message');
     const whiteboardListEl = document.getElementById('whiteboard-list');
+
+    // Category Breakdown DOM Elements
+    const categoryBreakdownListEl = document.getElementById('category-breakdown-list');
 
     // Control DOM Elements
     const resetButton = document.getElementById('reset-button');
@@ -108,6 +112,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!state.whiteboard) state.whiteboard = [];
             if (!state.mileageSettings) state.mileageSettings = { mpg: 25, gasCost: 3.75, maintenance: 0.05, convenience: 0.05 };
 
+            // --- Data Migration: v3 -> v4 (Add Expense Categories) ---
+            let migrationNeeded = false;
+            state.fundHistory.forEach(item => {
+                if (item.type === 'expense' && !item.category) {
+                    item.category = 'Other';
+                    migrationNeeded = true;
+                }
+            });
+            if (migrationNeeded) console.log("Migrating expense data to v4...");
+
             saveData();
         }
     }
@@ -148,12 +162,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 description = `${item.person} contributed`;
                 sign = '+';
                 color = 'green';
+                li.innerHTML = `<div>${description} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
             } else {
                 description = item.description;
                 sign = '-';
                 color = 'red';
+                const categoryLabel = item.category ? ` <span class="category-chip">${item.category}</span>` : '';
+                li.innerHTML = `<div>${description}${categoryLabel} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
             }
-            li.innerHTML = `<div>${description} <span style="color: ${color};">${sign}$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
             fundHistoryEl.appendChild(li);
         });
 
@@ -198,6 +214,47 @@ document.addEventListener('DOMContentLoaded', () => {
             li.style.flexDirection = 'column';
             li.style.alignItems = 'flex-start';
             whiteboardListEl.appendChild(li);
+        });
+
+        renderCategoryBreakdown();
+    }
+
+    function renderCategoryBreakdown() {
+        categoryBreakdownListEl.innerHTML = '';
+        const categoryTotals = {};
+        let totalExpenses = 0;
+
+        state.fundHistory.forEach(item => {
+            if (item.type === 'expense') {
+                const amount = Math.abs(item.amount);
+                if (!categoryTotals[item.category]) {
+                    categoryTotals[item.category] = 0;
+                }
+                categoryTotals[item.category] += amount;
+                totalExpenses += amount;
+            }
+        });
+
+        if (totalExpenses === 0) {
+            categoryBreakdownListEl.innerHTML = '<li>No expenses recorded yet.</li>';
+            return;
+        }
+
+        const sortedCategories = Object.entries(categoryTotals).sort(([,a],[,b]) => b - a);
+
+        sortedCategories.forEach(([category, total]) => {
+            const percentage = ((total / totalExpenses) * 100).toFixed(1);
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div style="width: 100%;">
+                    <span>${category}</span>
+                    <span style="float: right;">$${total.toFixed(2)} (${percentage}%)</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: ${percentage}%;"></div>
+                </div>
+            `;
+            categoryBreakdownListEl.appendChild(li);
         });
     }
 
@@ -252,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addContribution(e) { e.preventDefault(); const p = contributionPersonEl.value, a = parseFloat(contributionAmountEl.value); if(isNaN(a)||a<=0)return; state.fundBalance+=a; state.contributions[p]+=a; state.fundHistory.push({type:'contribution',person:p,amount:a,date:new Date().toISOString()}); contributionAmountEl.value=''; saveData(); render(); }
-    function addExpense(e) { e.preventDefault(); const d = expenseDescriptionEl.value, a = parseFloat(expenseAmountEl.value); if(!d||isNaN(a)||a<=0)return; state.fundBalance-=a; state.fundHistory.push({type:'expense',description:d,amount:-a,date:new Date().toISOString()}); expenseDescriptionEl.value=''; expenseAmountEl.value=''; saveData(); render(); }
+    function addExpense(e) { e.preventDefault(); const d = expenseDescriptionEl.value, c = expenseCategoryEl.value, a = parseFloat(expenseAmountEl.value); if(!d||!c||isNaN(a)||a<=0)return; state.fundBalance-=a; state.fundHistory.push({type:'expense',description:d,category:c,amount:-a,date:new Date().toISOString()}); expenseDescriptionEl.value=''; expenseAmountEl.value=''; saveData(); render(); }
     function addMessage(e) { e.preventDefault(); const m=whiteboardMessageEl.value; if(!m)return; state.whiteboard.push({message:m,date:new Date().toISOString()}); whiteboardMessageEl.value=''; saveData(); render(); }
 
     function logTrip(e) {

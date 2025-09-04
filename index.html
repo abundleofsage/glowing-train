@@ -54,6 +54,13 @@
                 <h3>Record an Expense</h3>
                 <form id="expense-form">
                     <input type="text" id="expense-description" placeholder="Item Description" required>
+                    <select id="expense-category" required>
+                        <option value="Groceries">Groceries</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Dining Out">Dining Out</option>
+                        <option value="Other">Other</option>
+                    </select>
                     <input type="number" id="expense-amount" placeholder="Amount" step="0.01" required>
                     <button type="submit">Add Expense</button>
                 </form>
@@ -111,6 +118,14 @@
             <h3>Trip Log</h3>
             <ul id="mileage-history">
                 <!-- Mileage log items will be added here -->
+            </ul>
+        </div>
+
+        <!-- Category Breakdown Section -->
+        <div class="card">
+            <h2>Category Breakdown</h2>
+            <ul id="category-breakdown-list">
+                <!-- Category breakdown will be rendered here -->
             </ul>
         </div>
 
