@@ -57,6 +57,16 @@ body {
     gap: 15px;
 }
 
+.control-button {
+    background-color: var(--button-bg-color);
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.control-button:hover {
+    background-color: var(--button-hover-bg-color);
+}
+
 .reset-button {
     background-color: var(--mileage-total-color);
     padding: 8px 12px;

@@ -41,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Control DOM Elements
     const resetButton = document.getElementById('reset-button');
+    const exportButton = document.getElementById('export-button');
+    const importButton = document.getElementById('import-button');
+    const importFileEl = document.getElementById('import-file');
 
     // State
     let state = {
@@ -206,6 +209,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function exportData() {
+        const dataStr = JSON.stringify(state, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'sage-emily-expenses.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const importedState = JSON.parse(event.target.result);
+                // Basic validation
+                if (importedState && typeof importedState === 'object' && 'fundBalance' in importedState) {
+                    if (confirm('Are you sure you want to import this data? This will overwrite current data.')) {
+                        state = { ...state, ...importedState };
+                        saveData();
+                        render();
+                        alert('Data imported successfully!');
+                    }
+                } else {
+                    alert('Error: Invalid or corrupted data file.');
+                }
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+                alert('Error: Could not parse the file. Make sure it is a valid JSON file.');
+            }
+        };
+        reader.readAsText(file);
+        // Reset file input so the same file can be loaded again
+        importFileEl.value = '';
+    }
+
     function addContribution(e) { e.preventDefault(); const p = contributionPersonEl.value, a = parseFloat(contributionAmountEl.value); if(isNaN(a)||a<=0)return; state.fundBalance+=a; state.contributions[p]+=a; state.fundHistory.push({type:'contribution',person:p,amount:a,date:new Date().toISOString()}); contributionAmountEl.value=''; saveData(); render(); }
     function addExpense(e) { e.preventDefault(); const d = expenseDescriptionEl.value, a = parseFloat(expenseAmountEl.value); if(!d||isNaN(a)||a<=0)return; state.fundBalance-=a; state.fundHistory.push({type:'expense',description:d,amount:-a,date:new Date().toISOString()}); expenseDescriptionEl.value=''; expenseAmountEl.value=''; saveData(); render(); }
     function addMessage(e) { e.preventDefault(); const m=whiteboardMessageEl.value; if(!m)return; state.whiteboard.push({message:m,date:new Date().toISOString()}); whiteboardMessageEl.value=''; saveData(); render(); }
@@ -273,6 +318,9 @@ document.addEventListener('DOMContentLoaded', () => {
     whiteboardForm.addEventListener('submit', addMessage);
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
     resetButton.addEventListener('click', resetAllData);
+    exportButton.addEventListener('click', exportData);
+    importButton.addEventListener('click', () => importFileEl.click());
+    importFileEl.addEventListener('change', importData);
 
     // --- Initial Load ---
     loadData();
