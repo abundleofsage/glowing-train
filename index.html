@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sage & Emily's Expense Tracker</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="header">
@@ -12,7 +13,7 @@
         <div id="top-nav" class="top-nav">
             <button class="nav-button active" data-index="0">Fund</button>
             <button class="nav-button" data-index="1">Mileage</button>
-            <button class="nav-button" data-index="2">Categories</button>
+            <button class="nav-button" data-index="2">Charts</button>
             <button class="nav-button" data-index="3">Chores</button>
             <button class="nav-button" data-index="4">Whiteboard</button>
         </div>
@@ -129,12 +130,17 @@
             </ul>
         </div>
 
-        <!-- Category Breakdown Section -->
+        <!-- Charts Section -->
         <div class="card">
-            <h2>Category Breakdown</h2>
-            <ul id="category-breakdown-list">
-                <!-- Category breakdown will be rendered here -->
-            </ul>
+            <h2>Charts</h2>
+            <div class="chart-container">
+                <h3>Contribution History</h3>
+                <canvas id="contribution-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Expense Category Breakdown</h3>
+                <canvas id="category-chart"></canvas>
+            </div>
         </div>
 
         <!-- Chore Section -->

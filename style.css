@@ -373,6 +373,13 @@ input:checked + .slider:before {
     border-radius: 50%;
 }
 
+.chart-container {
+    position: relative;
+    height: 40vh; /* Adjust height as needed */
+    width: 90%;   /* Adjust width as needed */
+    margin: 20px auto;
+}
+
 .category-chip {
     background-color: var(--button-bg-color);
     color: white;

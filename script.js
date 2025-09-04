@@ -40,8 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const whiteboardMessageEl = document.getElementById('whiteboard-message');
     const whiteboardListEl = document.getElementById('whiteboard-list');
 
-    // Category Breakdown DOM Elements
-    const categoryBreakdownListEl = document.getElementById('category-breakdown-list');
+    // Chart DOM Elements
+    let contributionChart = null;
+    let categoryChart = null;
 
     // Chore DOM Elements
     const choreForm = document.getElementById('chore-form');
@@ -251,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
             whiteboardListEl.appendChild(li);
         });
 
-        renderCategoryBreakdown();
+        renderCharts();
         renderChores();
     }
 
@@ -348,8 +349,95 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderCategoryBreakdown() {
-        categoryBreakdownListEl.innerHTML = '';
+    function renderCharts() {
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const textColor = isDarkMode ? '#ecf0f1' : '#333';
+
+        // Destroy existing charts if they exist
+        if (contributionChart) { contributionChart.destroy(); }
+        if (categoryChart) { categoryChart.destroy(); }
+
+        // --- Contribution History Chart (Line) ---
+        const contributionCtx = document.getElementById('contribution-chart').getContext('2d');
+        const contributions = state.fundHistory.filter(item => item.type === 'contribution');
+
+        if (contributions.length > 0) {
+            // Sort by date to ensure the timeline is correct
+            contributions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const labels = [];
+            const sageData = [];
+            const emilyData = [];
+            let sageCumulative = 0;
+            let emilyCumulative = 0;
+
+            // Use a Map to group contributions by date (day)
+            const dailyContributions = new Map();
+            contributions.forEach(c => {
+                const date = new Date(c.date).toLocaleDateString();
+                if (!dailyContributions.has(date)) {
+                    dailyContributions.set(date, { Sage: 0, Emily: 0 });
+                }
+                dailyContributions.get(date)[c.person] += c.amount;
+            });
+
+            // Process the aggregated data
+            for (const [date, dailyTotal] of dailyContributions.entries()) {
+                labels.push(date);
+                sageCumulative += dailyTotal.Sage;
+                emilyCumulative += dailyTotal.Emily;
+                sageData.push(sageCumulative);
+                emilyData.push(emilyCumulative);
+            }
+
+            contributionChart = new Chart(contributionCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Sage\'s Cumulative Contributions',
+                            data: sageData,
+                            borderColor: '#3498db', // Blue
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Emily\'s Cumulative Contributions',
+                            data: emilyData,
+                            borderColor: '#9b59b6', // Purple
+                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        },
+                        x: {
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: textColor } }
+                    }
+                }
+            });
+        }
+
+
+        // --- Expense Category Chart (Pie) ---
+        const categoryCtx = document.getElementById('category-chart').getContext('2d');
         const categoryTotals = {};
         let totalExpenses = 0;
 
@@ -364,27 +452,51 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (totalExpenses === 0) {
-            categoryBreakdownListEl.innerHTML = '<li>No expenses recorded yet.</li>';
-            return;
+        if (totalExpenses > 0) {
+            const categoryLabels = Object.keys(categoryTotals);
+            const categoryData = Object.values(categoryTotals);
+            const backgroundColors = [
+                '#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6',
+                '#1abc9c', '#e67e22', '#34495e', '#d35400', '#c0392b'
+            ];
+
+            categoryChart = new Chart(categoryCtx, {
+                type: 'pie',
+                data: {
+                    labels: categoryLabels,
+                    datasets: [{
+                        data: categoryData,
+                        backgroundColor: backgroundColors.slice(0, categoryLabels.length),
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? '#34495e' : '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: textColor }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.parsed;
+                                    const percentage = ((value / totalExpenses) * 100).toFixed(1);
+                                    label += `$${value.toFixed(2)} (${percentage}%)`;
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
-
-        const sortedCategories = Object.entries(categoryTotals).sort(([,a],[,b]) => b - a);
-
-        sortedCategories.forEach(([category, total]) => {
-            const percentage = ((total / totalExpenses) * 100).toFixed(1);
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <div style="width: 100%;">
-                    <span>${category}</span>
-                    <span style="float: right;">$${total.toFixed(2)} (${percentage}%)</span>
-                </div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: ${percentage}%;"></div>
-                </div>
-            `;
-            categoryBreakdownListEl.appendChild(li);
-        });
     }
 
     // --- Logic Functions ---
