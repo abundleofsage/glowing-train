@@ -136,19 +136,37 @@
             </ul>
         </div>
 
-        <!-- Chore Timer Section -->
+        <!-- Chore Section -->
         <div class="card">
-            <h2>Chore Timers</h2>
+            <h2>Chores</h2>
             <div class="form-container">
                 <form id="chore-form">
                     <input type="text" id="chore-description" placeholder="Chore Description" required>
-                    <input type="number" id="chore-duration" placeholder="Timer (in days)" min="1" step="1" required>
+                    <input type="number" id="chore-duration" placeholder="Days to repeat (or leave blank for one-time)" min="1" step="1">
                     <button type="submit">Add Chore</button>
                 </form>
             </div>
-            <ul id="chore-list">
-                <!-- Chore items will be rendered here -->
-            </ul>
+
+            <div class="chore-section">
+                <h3>One-Time Chores</h3>
+                <ul id="one-time-chore-list">
+                    <!-- One-time chore items will be rendered here -->
+                </ul>
+            </div>
+
+            <div class="chore-section">
+                <h3>Recurring Chores</h3>
+                <ul id="recurring-chore-list">
+                    <!-- Recurring chore items will be rendered here -->
+                </ul>
+            </div>
+
+            <div class="chore-section">
+                <h3>Completed Chores</h3>
+                <ul id="completed-chore-list">
+                    <!-- Completed chore items will be rendered here -->
+                </ul>
+            </div>
         </div>
 
         <!-- Whiteboard Section -->
