@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportButton = document.getElementById('export-button');
     const importButton = document.getElementById('import-button');
     const importFileEl = document.getElementById('import-file');
+    const loadTestDataButton = document.getElementById('load-test-data-button');
 
     // State
     let state = {
@@ -465,6 +466,15 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     }
 
+    function loadTestData() {
+        if (confirm('Are you sure you want to load test data? This will overwrite all current data.')) {
+            state = generateRandomData(); // This function is from test-data.js
+            saveData();
+            render();
+            alert('Test data loaded and applied!');
+        }
+    }
+
     function importData(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -638,6 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
     exportButton.addEventListener('click', exportData);
     importButton.addEventListener('click', () => importFileEl.click());
     importFileEl.addEventListener('change', importData);
+    loadTestDataButton.addEventListener('click', loadTestData);
     choreForm.addEventListener('submit', addChore);
     const choreCard = document.querySelectorAll('.card')[3]; // Chores is the 4th card
     if (choreCard) {
