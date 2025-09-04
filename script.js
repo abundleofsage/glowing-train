@@ -134,10 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Rendering ---
     function render() {
         // Update UI elements that depend on roommate names first
-        document.querySelector('label[for="contribution-person"]').textContent = 'Contributor:';
+        document.title = `${getPersonName(0)} & ${getPersonName(1)}'s Expense Tracker`;
         document.querySelector('.contribution-stats p:nth-child(1) b').textContent = `${getPersonName(0)}:`;
         document.querySelector('.contribution-stats p:nth-child(2) b').textContent = `${getPersonName(1)}:`;
-        document.querySelector('h2').textContent = `${getPersonName(0)} & ${getPersonName(1)}'s Expense Tracker`;
         document.querySelector('.main-title').textContent = `${getPersonName(0)[0]}&${getPersonName(1)[0]} Tracker`;
         document.querySelector('.whiteboard-post-btn[data-person="Sage"]').textContent = `Post as ${getPersonName(0)}`;
         document.querySelector('.whiteboard-post-btn[data-person="Emily"]').textContent = `Post as ${getPersonName(1)}`;
