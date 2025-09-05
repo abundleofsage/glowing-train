@@ -530,6 +530,127 @@ li {
     opacity: 0.6;
 }
 
+/* Whiteboard Styles */
+.whiteboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(90vh - 120px); /* Adjust based on header/form height */
+}
+
+.whiteboard-card {
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: box-shadow 0.3s;
+}
+
+.whiteboard-card:hover {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.whiteboard-card .card-header {
+    padding: 10px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.whiteboard-card .card-header .person-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: black !important; /* Overriding other person-name styles */
+    text-align: center;
+    display: block;
+    background-color: transparent !important;
+}
+
+.whiteboard-card .card-body {
+    padding: 15px;
+    flex-grow: 1;
+}
+
+.whiteboard-card .card-body p {
+    margin: 0;
+    font-size: 1em;
+    font-weight: normal;
+    color: var(--text-color);
+}
+
+body.dark-mode .whiteboard-card .card-body {
+    background-color: #4a4a4a; /* Dark grey */
+}
+
+body.dark-mode .whiteboard-card .card-body p {
+    color: #f1f1f1; /* Very light grey */
+}
+
+.whiteboard-card .card-footer {
+    padding: 10px 15px;
+    font-size: 0.8em;
+    color: var(--text-color);
+    opacity: 0.7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.seen-by-container {
+    display: flex;
+    gap: 4px;
+}
+
+.seen-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.2);
+}
+
+.seen-dot.sage { background-color: #9b59b6; }
+.seen-dot.emily { background-color: #3498db; }
+.seen-dot.susan { background-color: #2ecc71; }
+
+
+.whiteboard-card .card-actions {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    display: flex;
+    gap: 5px;
+}
+
+.whiteboard-card:hover .card-actions {
+    opacity: 1;
+}
+
+.card-actions button {
+    padding: 3px 8px;
+    font-size: 0.8em;
+    border-radius: 4px;
+}
+
+.card-actions .delete-btn {
+    font-size: 1.2em;
+    padding: 0 5px;
+}
+
+.replies-container {
+    margin-left: 20px;
+    padding-left: 10px;
+    border-left: 2px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
 .chore-item.completed .chore-last-completed {
     opacity: 0.6;
 }

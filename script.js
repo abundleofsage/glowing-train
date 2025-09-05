@@ -106,6 +106,32 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const getPersonName = (index) => state.roommates[index] || `Roommate ${index + 1}`;
 
+    function findMessageById(messages, id) {
+        for (const message of messages) {
+            if (message.id === id) return { message, parent: messages };
+            if (message.replies && message.replies.length > 0) {
+                const found = findMessageById(message.replies, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    function deleteMessageById(messages, id) {
+        for (let i = 0; i < messages.length; i++) {
+            if (messages[i].id === id) {
+                messages.splice(i, 1);
+                return true;
+            }
+            if (messages[i].replies && messages[i].replies.length > 0) {
+                if (deleteMessageById(messages[i].replies, id)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     // --- Data Persistence & Migration ---
     function saveData() {
         localStorage.setItem('expenseTrackerState', JSON.stringify(state));
@@ -128,12 +154,27 @@ document.addEventListener('DOMContentLoaded', () => {
             state.contributions = newContributions;
         }
 
-        // Simple migration for whiteboard messages to include a person
-        state.whiteboard.forEach(item => {
-            if (!item.person) {
-                item.person = state.roommates[0]; // Default to first roommate
-            }
-        });
+        // Migration for whiteboard messages
+        const migrateMessages = (messages) => {
+            if (!messages) return;
+            messages.forEach(item => {
+                if (!item.person) {
+                    item.person = state.roommates[0]; // Default to first roommate
+                }
+                if (!item.replies) {
+                    item.replies = [];
+                }
+                if (!item.seenBy) {
+                    item.seenBy = [];
+                }
+                if (!item.id) {
+                    item.id = `w_${Date.now()}_${Math.random()}`;
+                }
+                migrateMessages(item.replies); // Recurse for replies
+            });
+        };
+        migrateMessages(state.whiteboard);
+
 
         if (!Array.isArray(state.ious)) {
             state.ious = [];
@@ -258,20 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Render Whiteboard
         whiteboardListEl.innerHTML = '';
-        state.whiteboard.slice().reverse().forEach((item, index) => {
-            const li = document.createElement('li');
-            const originalIndex = state.whiteboard.length - 1 - index;
-            const date = new Date(item.date).toLocaleString();
-            const personClass = getPersonClass(item.person);
-
-            li.innerHTML = `
-                <div style="flex-grow: 1;">
-                    <p style="margin: 0; padding: 0; font-weight: normal;">${item.message}</p>
-                    <small>Posted by <span class="person-name ${personClass}">${item.person}</span> - ${date}</small>
-                </div>
-                <button class="delete-btn" data-type="whiteboard" data-index="${originalIndex}">&times;</button>
-            `;
-            whiteboardListEl.appendChild(li);
+        state.whiteboard.forEach(message => {
+            whiteboardListEl.innerHTML += renderWhiteboardMessage(message, 0);
         });
 
         // Render Dropdowns
@@ -283,6 +312,64 @@ document.addEventListener('DOMContentLoaded', () => {
         renderChores();
         renderShoppingList();
         renderSettings();
+    }
+
+    function getMessageAge(dateString) {
+        const now = new Date();
+        const then = new Date(dateString);
+        const diffSeconds = Math.floor((now - then) / 1000);
+
+        if (diffSeconds < 60) return `${diffSeconds}s ago`;
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        if (diffMinutes < 60) return `${diffMinutes}m ago`;
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 7) return `${diffDays}d ago`;
+        const diffWeeks = Math.floor(diffDays / 7);
+        return `${diffWeeks}w ago`;
+    }
+
+    function renderWhiteboardMessage(message, level) {
+        const date = new Date(message.date);
+        const personClass = getPersonClass(message.person);
+        const age = getMessageAge(message.date);
+
+        const seenDots = message.seenBy.map(person => {
+            const seenPersonClass = getPersonClass(person);
+            return `<div class="seen-dot ${seenPersonClass}" title="Seen by ${person}"></div>`;
+        }).join('');
+
+        const repliesHTML = message.replies.map(reply => renderWhiteboardMessage(reply, level + 1)).join('');
+
+        const cardSizeStyle = `font-size: ${1 - level * 0.1}em;`;
+
+        return `
+            <div class="whiteboard-card" data-id="${message.id}" data-level="${level}" style="${cardSizeStyle}">
+                <div class="card-header ${personClass}">
+                    <span class="person-name">${message.person}</span>
+                </div>
+                <div class="card-body">
+                    <p>${message.message}</p>
+                </div>
+                <div class="card-footer">
+                    <span class="timestamp">${date.toLocaleString()} (${age})</span>
+                    <div class="seen-by-container">
+                        ${seenDots}
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <button class="reply-btn">Reply</button>
+                    ${state.roommates.filter(r => r !== message.person && !message.seenBy.includes(r)).map(r => `
+                        <button class="seen-btn" data-person="${r}">Seen by ${r}</button>
+                    `).join('')}
+                    <button class="delete-btn" data-type="whiteboard" data-id="${message.id}">&times;</button>
+                </div>
+                <div class="replies-container">
+                    ${repliesHTML}
+                </div>
+            </div>
+        `;
     }
 
     function renderIOU() {
@@ -389,6 +476,34 @@ document.addEventListener('DOMContentLoaded', () => {
             selectElement.value = currentValue;
         } else if (hasPlaceholder) {
             selectElement.selectedIndex = 0;
+        }
+    }
+
+    function markAsSeen(messageId, person) {
+        const result = findMessageById(state.whiteboard, messageId);
+        if (result && result.message) {
+            if (!result.message.seenBy.includes(person)) {
+                result.message.seenBy.push(person);
+                saveData();
+                render();
+            }
+        }
+    }
+
+    function addReply(parentId, message, person) {
+        const result = findMessageById(state.whiteboard, parentId);
+        if (result && result.message) {
+            const newReply = {
+                id: `w_${Date.now()}`,
+                message,
+                person,
+                date: new Date().toISOString(),
+                replies: [],
+                seenBy: []
+            };
+            result.message.replies.push(newReply);
+            saveData();
+            render();
         }
     }
 
@@ -619,18 +734,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function deleteItem(type, index, event) {
+    function deleteItem(type, id, event) {
         if (event.shiftKey || confirm('Are you sure you want to delete this item?')) {
-            let array;
-            switch (type) {
-                case 'fund': array = state.fundHistory; break;
-                case 'mileage': array = state.mileageHistory; break;
-                case 'whiteboard': array = state.whiteboard; break;
-                case 'iou': array = state.ious; break;
-                default: return;
+            if (type === 'whiteboard') {
+                deleteMessageById(state.whiteboard, id);
+            } else {
+                let array;
+                const index = parseInt(id, 10);
+                switch (type) {
+                    case 'fund': array = state.fundHistory; break;
+                    case 'mileage': array = state.mileageHistory; break;
+                    case 'iou': array = state.ious; break;
+                    default: return;
+                }
+                array.splice(index, 1);
+                if (type === 'fund' || type === 'mileage') recalculateTotals();
             }
-            array.splice(index, 1);
-            if (type === 'fund' || type === 'mileage') recalculateTotals();
             saveData();
             render();
         }
@@ -674,7 +793,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const person = e.submitter.dataset.person;
         const message = whiteboardMessageEl.value;
         if (!message || !person) return;
-        state.whiteboard.push({ message, person, date: new Date().toISOString() });
+        const newMessage = {
+            id: `w_${Date.now()}`,
+            message,
+            person,
+            date: new Date().toISOString(),
+            replies: [],
+            seenBy: []
+        };
+        state.whiteboard.push(newMessage);
         whiteboardMessageEl.value = '';
         saveData();
         render();
@@ -1063,11 +1190,52 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.addEventListener('click', (e) => {
         if (e.target.matches('.delete-btn')) {
             const type = e.target.dataset.type;
-            const index = parseInt(e.target.dataset.index, 10);
-            deleteItem(type, index, e);
+            const id = type === 'whiteboard' ? e.target.dataset.id : e.target.dataset.index;
+            deleteItem(type, id, e);
         }
         if (e.target.matches('.chore-btn')) {
             completeChore(e.target.dataset.choreId, e.target.dataset.person);
+        }
+        if (e.target.matches('.seen-btn')) {
+            const person = e.target.dataset.person;
+            const card = e.target.closest('.whiteboard-card');
+            if (person && card) {
+                const messageId = card.dataset.id;
+                markAsSeen(messageId, person);
+            }
+        }
+        if (e.target.matches('.reply-btn')) {
+            const card = e.target.closest('.whiteboard-card');
+            if (card) {
+                const repliesContainer = card.querySelector('.replies-container');
+                if (repliesContainer && !repliesContainer.querySelector('.reply-form')) {
+                    const replyForm = document.createElement('div');
+                    replyForm.className = 'reply-form';
+
+                    const personOptions = state.roommates.map(r => `<option value="${r}">${r}</option>`).join('');
+
+                    replyForm.innerHTML = `
+                        <textarea placeholder="Write a reply..."></textarea>
+                        <select>
+                            ${personOptions}
+                        </select>
+                        <button class="post-reply-btn">Post Reply</button>
+                    `;
+                    repliesContainer.appendChild(replyForm);
+                }
+            }
+        }
+        if (e.target.matches('.post-reply-btn')) {
+            const form = e.target.closest('.reply-form');
+            const card = e.target.closest('.whiteboard-card');
+            if (form && card) {
+                const parentId = card.dataset.id;
+                const message = form.querySelector('textarea').value;
+                const person = form.querySelector('select').value;
+                if (message.trim()) {
+                    addReply(parentId, message, person);
+                }
+            }
         }
         if (e.target.matches('.delete-category-btn')) {
             deleteExpenseCategory(e.target.dataset.category);
