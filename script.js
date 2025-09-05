@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const repliesHTML = message.replies.map(reply => renderWhiteboardMessage(reply, level + 1)).join('');
 
-        const cardSizeStyle = `font-size: ${1 - level * 0.1}em;`;
+        const cardSizeStyle = `font-size: ${1 - level * 0.075}em;`;
 
         return `
             <div class="whiteboard-card" data-id="${message.id}" data-level="${level}" style="${cardSizeStyle}">
@@ -503,7 +503,25 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             result.message.replies.push(newReply);
             saveData();
-            render();
+
+            // Find the parent card element and update it without a full re-render
+            const parentCard = document.querySelector(`.whiteboard-card[data-id="${parentId}"]`);
+            if (parentCard) {
+                const repliesContainer = parentCard.querySelector('.replies-container');
+                if (repliesContainer) {
+                    const newReplyHTML = renderWhiteboardMessage(newReply, parseInt(parentCard.dataset.level, 10) + 1);
+                    repliesContainer.insertAdjacentHTML('beforeend', newReplyHTML);
+
+                    // Clear the reply form textarea
+                    const replyForm = parentCard.querySelector('.reply-form textarea');
+                    if (replyForm) {
+                        replyForm.value = '';
+                    }
+                }
+            } else {
+                // Fallback to full render if the card isn't found
+                render();
+            }
         }
     }
 
@@ -734,22 +752,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function deleteItem(type, id, event) {
-        if (event.shiftKey || confirm('Are you sure you want to delete this item?')) {
-            if (type === 'whiteboard') {
-                deleteMessageById(state.whiteboard, id);
-            } else {
-                let array;
-                const index = parseInt(id, 10);
-                switch (type) {
-                    case 'fund': array = state.fundHistory; break;
-                    case 'mileage': array = state.mileageHistory; break;
-                    case 'iou': array = state.ious; break;
-                    default: return;
-                }
-                array.splice(index, 1);
-                if (type === 'fund' || type === 'mileage') recalculateTotals();
-            }
+    function deleteItem(array, index) {
+        array.splice(index, 1);
+    }
+
+    function deleteWhiteboardMessage(id) {
+        if (deleteMessageById(state.whiteboard, id)) {
             saveData();
             render();
         }
@@ -1189,9 +1197,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
     document.body.addEventListener('click', (e) => {
         if (e.target.matches('.delete-btn')) {
-            const type = e.target.dataset.type;
-            const id = type === 'whiteboard' ? e.target.dataset.id : e.target.dataset.index;
-            deleteItem(type, id, e);
+            if (confirm('Are you sure you want to delete this item?')) {
+                const type = e.target.dataset.type;
+                const id = e.target.dataset.id;
+                const index = e.target.dataset.index;
+
+                switch (type) {
+                    case 'whiteboard':
+                        deleteWhiteboardMessage(id);
+                        break;
+                    case 'fund':
+                        deleteItem(state.fundHistory, index);
+                        recalculateTotals();
+                        saveData();
+                        render();
+                        break;
+                    case 'mileage':
+                        deleteItem(state.mileageHistory, index);
+                        recalculateTotals();
+                        saveData();
+                        render();
+                        break;
+                    case 'iou':
+                        deleteItem(state.ious, index);
+                        saveData();
+                        render();
+                        break;
+                }
+            }
         }
         if (e.target.matches('.chore-btn')) {
             completeChore(e.target.dataset.choreId, e.target.dataset.person);

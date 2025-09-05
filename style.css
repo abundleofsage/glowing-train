@@ -533,7 +533,7 @@ li {
 /* Whiteboard Styles */
 .whiteboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     padding: 20px;
     overflow-y: auto;
@@ -560,6 +560,10 @@ li {
     border-top-right-radius: 8px;
 }
 
+.card-header.sage { background-color: #9b59b6 !important; }
+.card-header.emily { background-color: #3498db !important; }
+.card-header.susan { background-color: #2ecc71 !important; }
+
 .whiteboard-card .card-header .person-name {
     font-size: 1.2em;
     font-weight: bold;
@@ -576,7 +580,7 @@ li {
 
 .whiteboard-card .card-body p {
     margin: 0;
-    font-size: 1em;
+    font-size: 1.2em;
     font-weight: normal;
     color: var(--text-color);
 }
