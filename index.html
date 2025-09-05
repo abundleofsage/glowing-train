@@ -13,11 +13,12 @@
         <div id="top-nav" class="top-nav">
             <button class="nav-button active" data-index="0">Fund</button>
             <button class="nav-button" data-index="1">Mileage</button>
-            <button class="nav-button" data-index="2">Charts</button>
-            <button class="nav-button" data-index="3">Chores</button>
-            <button class="nav-button" data-index="4">Shopping</button>
-            <button class="nav-button" data-index="5">Whiteboard</button>
-            <button class="nav-button" data-index="6">Settings</button>
+            <button class="nav-button" data-index="2">IOU</button>
+            <button class="nav-button" data-index="3">Charts</button>
+            <button class="nav-button" data-index="4">Chores</button>
+            <button class="nav-button" data-index="5">Shopping</button>
+            <button class="nav-button" data-index="6">Whiteboard</button>
+            <button class="nav-button" data-index="7">Settings</button>
         </div>
         <div class="header-controls">
             <button id="export-button" class="control-button">Export</button>
@@ -108,6 +109,60 @@
             <h3>Trip Log</h3>
             <ul id="mileage-history">
                 <!-- Mileage log items will be added here -->
+            </ul>
+        </div>
+
+        <!-- IOU and Bill Splitting Section -->
+        <div class="card">
+            <h2>IOU Tracker</h2>
+            <div class="fund-analytics">
+                <h3>Debt Summary</h3>
+                <p id="iou-summary-text">No one owes anything.</p>
+            </div>
+
+            <div class="form-container">
+                <h3>Log a Direct IOU</h3>
+                <form id="iou-form">
+                    <select id="iou-payer" required>
+                        <!-- Populated by JS -->
+                    </select>
+                    <span>paid for</span>
+                    <select id="iou-ower" required>
+                        <!-- Populated by JS -->
+                    </select>
+                    <input type="number" id="iou-amount" placeholder="Amount" step="0.01" required>
+                    <input type="text" id="iou-description" placeholder="For..." required>
+                    <button type="submit">Add IOU</button>
+                </form>
+            </div>
+
+            <div class="form-container">
+                <h3>Split a Bill</h3>
+                <form id="bill-split-form">
+                    <input type="text" id="bill-description" placeholder="Bill Description (e.g., Pizza Night)" required>
+                    <input type="number" id="bill-total-amount" placeholder="Total Bill Amount" step="0.01" required>
+                     <select id="bill-payer" required>
+                        <option value="" disabled selected>Who paid?</option>
+                        <!-- Populated by JS -->
+                    </select>
+                    <div class="setting-row">
+                        <label for="bill-split-type">Split Method:</label>
+                        <select id="bill-split-type">
+                            <option value="equally">Equally</option>
+                            <option value="percentage">By Percentage</option>
+                            <option value="fixed">By Fixed Amount</option>
+                        </select>
+                    </div>
+                    <div id="bill-split-details">
+                        <!-- Dynamic fields for percentage/fixed split will go here -->
+                    </div>
+                    <button type="submit">Split Bill</button>
+                </form>
+            </div>
+
+            <h3>Active IOUs</h3>
+            <ul id="iou-history">
+                <!-- IOU items will be added here -->
             </ul>
         </div>
 

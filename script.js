@@ -49,6 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const importFileEl = document.getElementById('import-file');
     const loadTestDataButton = document.getElementById('load-test-data-button');
 
+    // --- IOU DOM Elements ---
+    const iouSummaryTextEl = document.getElementById('iou-summary-text');
+    const iouForm = document.getElementById('iou-form');
+    const iouPayerEl = document.getElementById('iou-payer');
+    const iouOwerEl = document.getElementById('iou-ower');
+    const iouAmountEl = document.getElementById('iou-amount');
+    const iouDescriptionEl = document.getElementById('iou-description');
+    const billSplitForm = document.getElementById('bill-split-form');
+    const billDescriptionEl = document.getElementById('bill-description');
+    const billTotalAmountEl = document.getElementById('bill-total-amount');
+    const billPayerEl = document.getElementById('bill-payer');
+    const billSplitTypeEl = document.getElementById('bill-split-type');
+    const billSplitDetailsEl = document.getElementById('bill-split-details');
+    const iouHistoryEl = document.getElementById('iou-history');
+
     // --- Settings DOM Elements ---
     const roommate1NameInput = document.getElementById('roommate1-name');
     const roommate2NameInput = document.getElementById('roommate2-name');
@@ -76,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         shoppingList: [],
         wishlist: [],
         recentlyPurchased: [],
+        ious: [],
         roommates: ['Sage', 'Emily'],
         expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'],
     };
@@ -112,6 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.person = state.roommates[0]; // Default to first roommate
             }
         });
+
+        if (!Array.isArray(state.ious)) {
+            state.ious = [];
+        }
 
         purgeOldCompletedChores();
         purgeOldRecentlyPurchased();
@@ -225,15 +245,80 @@ document.addEventListener('DOMContentLoaded', () => {
         populateDropdown(contributionPersonEl, state.roommates);
         populateDropdown(expenseCategoryEl, state.expenseCategories);
 
+        renderIOU();
         renderCharts();
         renderChores();
         renderShoppingList();
         renderSettings();
     }
 
-    function populateDropdown(selectElement, options) {
+    function renderIOU() {
+        // Render IOU dropdowns
+        populateDropdown(iouPayerEl, state.roommates);
+        populateDropdown(iouOwerEl, state.roommates);
+        populateDropdown(billPayerEl, state.roommates, true);
+
+
+        // Calculate IOU summary
+        const [p1, p2] = state.roommates;
+        let p1OwesP2 = 0;
+        let p2OwesP1 = 0;
+
+        state.ious.forEach(iou => {
+            if (iou.payer === p1 && iou.ower === p2) {
+                p2OwesP1 += iou.amount;
+            } else if (iou.payer === p2 && iou.ower === p1) {
+                p1OwesP2 += iou.amount;
+            }
+        });
+
+        const netDebt = p1OwesP2 - p2OwesP1;
+        if (Math.abs(netDebt) < 0.01) {
+            iouSummaryTextEl.textContent = 'No one owes anything.';
+        } else if (netDebt > 0) {
+            const owerClass = getPersonClass(p1);
+            const payerClass = getPersonClass(p2);
+            iouSummaryTextEl.innerHTML = `<span class="person-name ${owerClass}">${p1}</span> owes <span class="person-name ${payerClass}">${p2}</span> <b>$${netDebt.toFixed(2)}</b>.`;
+        } else {
+            const owerClass = getPersonClass(p2);
+            const payerClass = getPersonClass(p1);
+            iouSummaryTextEl.innerHTML = `<span class="person-name ${owerClass}">${p2}</span> owes <span class="person-name ${payerClass}">${p1}</span> <b>$${Math.abs(netDebt).toFixed(2)}</b>.`;
+        }
+
+        // Render IOU history
+        iouHistoryEl.innerHTML = '';
+        if (state.ious.length === 0) {
+            iouHistoryEl.innerHTML = '<li>No active IOUs.</li>';
+            return;
+        }
+
+        state.ious.slice().reverse().forEach((iou, index) => {
+            const li = document.createElement('li');
+            const originalIndex = state.ious.length - 1 - index;
+            const date = new Date(iou.date).toLocaleString();
+            const payerClass = getPersonClass(iou.payer);
+            const owerClass = getPersonClass(iou.ower);
+
+            li.innerHTML = `
+                <div style="flex-grow: 1;">
+                    <div>
+                        <span class="person-name ${payerClass}">${iou.payer}</span> paid <b>$${iou.amount.toFixed(2)}</b> for <span class="person-name ${owerClass}">${iou.ower}</span>
+                    </div>
+                    <small>${iou.description} - ${date}</small>
+                </div>
+                <button class="delete-btn" data-type="iou" data-index="${originalIndex}">&times;</button>
+            `;
+            iouHistoryEl.appendChild(li);
+        });
+    }
+
+    function populateDropdown(selectElement, options, hasPlaceholder = false) {
         const currentValue = selectElement.value;
+        const placeholder = hasPlaceholder ? selectElement.querySelector('option[disabled]') : null;
         selectElement.innerHTML = '';
+        if (placeholder) {
+            selectElement.appendChild(placeholder);
+        }
         options.forEach(option => {
             const optionEl = document.createElement('option');
             optionEl.value = option;
@@ -242,6 +327,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (options.includes(currentValue)) {
             selectElement.value = currentValue;
+        } else if (hasPlaceholder) {
+            selectElement.selectedIndex = 0;
         }
     }
 
@@ -446,7 +533,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function deleteItem(type, index, event) {
         if (event.shiftKey || confirm('Are you sure you want to delete this item?')) {
-            const array = state[type === 'fund' ? 'fundHistory' : type === 'mileage' ? 'mileageHistory' : 'whiteboard'];
+            let array;
+            switch (type) {
+                case 'fund': array = state.fundHistory; break;
+                case 'mileage': array = state.mileageHistory; break;
+                case 'whiteboard': array = state.whiteboard; break;
+                case 'iou': array = state.ious; break;
+                default: return;
+            }
             array.splice(index, 1);
             if (type === 'fund' || type === 'mileage') recalculateTotals();
             saveData();
@@ -507,6 +601,173 @@ document.addEventListener('DOMContentLoaded', () => {
     function completeChore(id, person) { const i=state.chores.findIndex(c=>c.id===id); if(i===-1)return; const chore=state.chores[i]; chore.lastCompletedBy=person; chore.lastCompletedDate=new Date().toISOString(); if(chore.isOneTime){chore.completionDate=new Date().toISOString();state.completedChores.push(chore);state.chores.splice(i,1);} saveData(); render(); }
     function logTrip(e) { e.preventDefault(); const d=tripDescriptionEl.value, m=parseFloat(tripMilesEl.value); if(!d||isNaN(m)||m<=0)return; const c=m*calculateEffectiveRate(); state.mileageTotal+=c; state.mileageHistory.push({type:'trip',description:d,miles:m,cost:c,date:new Date().toISOString()}); tripDescriptionEl.value='';tripMilesEl.value=''; saveData(); render(); }
     function recordMileagePayment(e) { e.preventDefault(); const a=parseFloat(paymentAmountEl.value); if(isNaN(a)||a<=0)return; state.mileageTotal-=a; state.mileageHistory.push({type:'payment',amount:a,date:new Date().toISOString()}); paymentAmountEl.value=''; saveData(); render(); }
+
+    function addIOU(e) {
+        e.preventDefault();
+        const payer = iouPayerEl.value;
+        const ower = iouOwerEl.value;
+        const amount = parseFloat(iouAmountEl.value);
+        const description = iouDescriptionEl.value.trim();
+
+        if (payer === ower) {
+            alert("Payer and ower cannot be the same person.");
+            return;
+        }
+        if (isNaN(amount) || amount <= 0 || !description) {
+            alert("Please fill out all fields correctly.");
+            return;
+        }
+
+        state.ious.push({
+            id: `iou_${Date.now()}`,
+            payer,
+            ower,
+            amount,
+            description,
+            date: new Date().toISOString()
+        });
+
+        iouAmountEl.value = '';
+        iouDescriptionEl.value = '';
+        saveData();
+        render();
+    }
+
+    function splitBill(e) {
+        e.preventDefault();
+        const description = billDescriptionEl.value.trim();
+        const totalAmount = parseFloat(billTotalAmountEl.value);
+        const payer = billPayerEl.value;
+        const splitType = billSplitTypeEl.value;
+
+        if (!description || isNaN(totalAmount) || totalAmount <= 0 || !payer) {
+            alert('Please fill out all bill details correctly.');
+            return;
+        }
+
+        const owers = state.roommates.filter(r => r !== payer);
+        if (owers.length === 0) {
+             alert('Cannot split a bill with only one person.');
+             return;
+        }
+
+        const newIous = [];
+        let success = false;
+
+        if (splitType === 'equally') {
+            const amountPerPerson = totalAmount / state.roommates.length;
+            const userOwes = totalAmount - amountPerPerson;
+
+            owers.forEach(ower => {
+                newIous.push({ payer, ower, amount: amountPerPerson, description: `${description} (split equally)` });
+            });
+            success = true;
+
+        } else if (splitType === 'percentage' || splitType === 'fixed') {
+            const inputs = billSplitDetailsEl.querySelectorAll('input');
+            const shares = Array.from(inputs).map(input => ({
+                person: input.dataset.person,
+                value: parseFloat(input.value) || 0
+            }));
+
+            if (shares.some(s => s.value < 0)) {
+                alert('Negative values are not allowed.');
+                return;
+            }
+
+            if (splitType === 'percentage') {
+                const totalPercent = shares.reduce((sum, s) => sum + s.value, 0);
+                if (totalPercent > 100) {
+                    alert(`Percentages for owers cannot exceed 100. Current total: ${totalPercent}%`);
+                    return;
+                }
+                shares.forEach(share => {
+                    const amount = totalAmount * (share.value / 100);
+                    newIous.push({ payer, ower: share.person, amount, description: `${description} (${share.value}%)` });
+                });
+                success = true;
+
+            } else { // fixed
+                const totalFixed = shares.reduce((sum, s) => sum + s.value, 0);
+                if (totalFixed > totalAmount) {
+                    alert(`Fixed amounts for owers cannot exceed the total bill of $${totalAmount.toFixed(2)}. Current total: $${totalFixed.toFixed(2)}`);
+                    return;
+                }
+                shares.forEach(share => {
+                    newIous.push({ payer, ower: share.person, amount: share.value, description: `${description} (fixed split)` });
+                });
+                success = true;
+            }
+        }
+
+        if (success) {
+            newIous.forEach(iou => {
+                 if (iou.amount > 0) { // Only add IOU if there is an amount owed
+                    state.ious.push({
+                        id: `iou_${Date.now()}_${iou.ower}`,
+                        payer: iou.payer,
+                        ower: iou.ower,
+                        amount: iou.amount,
+                        description: iou.description,
+                        date: new Date().toISOString()
+                    });
+                }
+            });
+        } else {
+            alert('Could not process split. Unknown error.');
+            return;
+        }
+
+        billDescriptionEl.value = '';
+        billTotalAmountEl.value = '';
+        billPayerEl.selectedIndex = 0;
+        billSplitDetailsEl.innerHTML = '';
+        saveData();
+        render();
+    }
+
+    function renderBillSplitDetails() {
+        const splitType = billSplitTypeEl.value;
+        billSplitDetailsEl.innerHTML = ''; // Clear previous details
+
+        if (splitType === 'percentage' || splitType === 'fixed') {
+            const payer = billPayerEl.value;
+            if (!payer) {
+                billSplitDetailsEl.innerHTML = '<p style="color: red; font-size: 0.9rem;">Please select who paid first.</p>';
+                return;
+            }
+            const owers = state.roommates.filter(r => r !== payer);
+
+            owers.forEach(person => {
+                const row = document.createElement('div');
+                row.className = 'setting-row';
+
+                const label = document.createElement('label');
+                label.for = `split-input-${person}`;
+                label.textContent = `${person}'s share:`;
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.id = `split-input-${person}`;
+                input.dataset.person = person;
+
+                if (splitType === 'percentage') {
+                    input.placeholder = '%';
+                    input.step = "1";
+                    input.min = "0";
+                    input.max = "100";
+                } else { // fixed
+                    input.placeholder = '$';
+                    input.step = "0.01";
+                    input.min = "0";
+                }
+
+                row.appendChild(label);
+                row.appendChild(input);
+                billSplitDetailsEl.appendChild(row);
+            });
+        }
+    }
 
     function updateMileageSettings() {
         state.mileageSettings = { mpg: parseFloat(mpgInput.value)||0, gasCost: parseFloat(gasCostInput.value)||0, maintenance: parseFloat(maintenanceFeeInput.value)||0, convenience: parseFloat(convenienceFeeInput.value)||0 };
@@ -723,6 +984,9 @@ document.addEventListener('DOMContentLoaded', () => {
     expenseForm.addEventListener('submit', addExpense);
     mileageForm.addEventListener('submit', logTrip);
     paymentForm.addEventListener('submit', recordMileagePayment);
+    iouForm.addEventListener('submit', addIOU);
+    billSplitForm.addEventListener('submit', splitBill);
+    billSplitTypeEl.addEventListener('change', renderBillSplitDetails);
     whiteboardForm.addEventListener('submit', addMessage);
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
     resetButton.addEventListener('click', resetAllData);
