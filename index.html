@@ -44,9 +44,8 @@
             <div class="fund-analytics">
                 <h3>Analytics</h3>
                 <p id="equalizer-text">Contributions are balanced.</p>
-                <div class="contribution-stats">
-                    <p><b>Sage:</b> <span id="sage-total-contrib">$0.00</span> total (<span id="sage-avg-contrib">$0.00</span>/mo avg)</p>
-                    <p><b>Emily:</b> <span id="emily-total-contrib">$0.00</span> total (<span id="emily-avg-contrib">$0.00</span>/mo avg)</p>
+                <div class="contribution-stats" id="contribution-stats-container">
+                    <!-- Roommate contribution stats will be dynamically inserted here -->
                 </div>
             </div>
 
@@ -54,8 +53,7 @@
                 <h3>Add Contribution</h3>
                 <form id="contribution-form">
                     <select id="contribution-person" required>
-                        <option value="Sage">Sage</option>
-                        <option value="Emily">Emily</option>
+                        <!-- Options will be dynamically populated by JS -->
                     </select>
                     <input type="number" id="contribution-amount" placeholder="Amount" step="0.01" required>
                     <button type="submit">Add Contribution</button>
@@ -254,8 +252,7 @@
                 <form id="whiteboard-form">
                     <textarea id="whiteboard-message" placeholder="Share a message..." rows="3" required></textarea>
                     <div id="whiteboard-post-buttons" style="display: flex; gap: 10px;">
-                        <button type="submit" class="whiteboard-post-btn" data-person="Sage">Post as Sage</button>
-                        <button type="submit" class="whiteboard-post-btn" data-person="Emily">Post as Emily</button>
+                        <!-- Buttons are now dynamically generated in script.js -->
                     </div>
                 </form>
             </div>
@@ -272,13 +269,8 @@
             <!-- General Settings -->
             <div class="form-container">
                 <h3>General</h3>
-                <div class="setting-row">
-                    <label for="roommate1-name">Roommate 1 Name:</label>
-                    <input type="text" id="roommate1-name" value="Sage">
-                </div>
-                <div class="setting-row">
-                    <label for="roommate2-name">Roommate 2 Name:</label>
-                    <input type="text" id="roommate2-name" value="Emily">
+                <div id="roommate-settings-container">
+                    <!-- Roommate name inputs are dynamically generated here -->
                 </div>
                  <div class="setting-row">
                     <label for="theme-toggle-settings">Dark Mode:</label>

@@ -473,7 +473,12 @@ input:checked + .slider:before {
     background-color: #3498db;
 }
 
-.chore-btn.sage, .chore-btn.emily {
+.chore-btn.susan, .person-name.susan {
+    color: #2ecc71 !important; /* Green */
+    background-color: #2ecc71;
+}
+
+.chore-btn.sage, .chore-btn.emily, .chore-btn.susan {
     color: white !important;
 }
 
@@ -580,6 +585,7 @@ li {
 
 .shopping-btn.claim.sage { background-color: #9b59b6; }
 .shopping-btn.claim.emily { background-color: #3498db; }
+.shopping-btn.claim.susan { background-color: #2ecc71; }
 .shopping-btn.unclaim { background-color: #7f8c8d; }
 .shopping-btn.purchase { background-color: #2ecc71; }
 
@@ -592,6 +598,7 @@ li {
 
 .claimed-by.sage { background-color: rgba(155, 89, 182, 0.2); color: #9b59b6; }
 .claimed-by.emily { background-color: rgba(52, 152, 219, 0.2); color: #3498db; }
+.claimed-by.susan { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; }
 
 .shopping-item.purchased .shopping-description {
     text-decoration: line-through;

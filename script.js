@@ -11,10 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const expenseAmountEl = document.getElementById('expense-amount');
     const fundHistoryEl = document.getElementById('fund-history');
     const equalizerTextEl = document.getElementById('equalizer-text');
-    const sageTotalContribEl = document.getElementById('sage-total-contrib');
-    const sageAvgContribEl = document.getElementById('sage-avg-contrib');
-    const emilyTotalContribEl = document.getElementById('emily-total-contrib');
-    const emilyAvgContribEl = document.getElementById('emily-avg-contrib');
     const mileageTotalEl = document.getElementById('mileage-total');
     const mileageForm = document.getElementById('mileage-form');
     const tripDescriptionEl = document.getElementById('trip-description');
@@ -92,12 +88,22 @@ document.addEventListener('DOMContentLoaded', () => {
         wishlist: [],
         recentlyPurchased: [],
         ious: [],
-        roommates: ['Sage', 'Emily'],
+        roommates: ['Sage', 'Emily', 'Susan'],
         expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'],
     };
 
     // --- Helper Functions ---
-    const getPersonClass = (person) => state.roommates.indexOf(person) === 0 ? 'sage' : 'emily';
+    const getPersonClass = (person) => {
+        const lowerCasePerson = person.toLowerCase();
+        // Return a default or calculated class if not one of the specific roommates
+        if (['sage', 'emily', 'susan'].includes(lowerCasePerson)) {
+            return lowerCasePerson;
+        }
+        // Fallback for dynamically added roommates
+        const index = state.roommates.indexOf(person);
+        const colors = ['#9b59b6', '#3498db', '#2ecc71', '#f1c40f', '#e67e22'];
+        return `dynamic-roommate-${index % colors.length}`;
+    };
     const getPersonName = (index) => state.roommates[index] || `Roommate ${index + 1}`;
 
     // --- Data Persistence & Migration ---
@@ -164,12 +170,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Rendering ---
     function render() {
         // Update UI elements that depend on roommate names first
-        document.title = `${getPersonName(0)} & ${getPersonName(1)}'s Expense Tracker`;
-        document.querySelector('.contribution-stats p:nth-child(1) b').textContent = `${getPersonName(0)}:`;
-        document.querySelector('.contribution-stats p:nth-child(2) b').textContent = `${getPersonName(1)}:`;
-        document.querySelector('.main-title').textContent = `${getPersonName(0)[0]}&${getPersonName(1)[0]} Tracker`;
-        document.querySelector('.whiteboard-post-btn[data-person="Sage"]').textContent = `Post as ${getPersonName(0)}`;
-        document.querySelector('.whiteboard-post-btn[data-person="Emily"]').textContent = `Post as ${getPersonName(1)}`;
+        document.title = `${state.roommates.join(' & ')}'s Expense Tracker`;
+        document.querySelector('.main-title').textContent = `${state.roommates.map(r => r[0]).join('&')} Tracker`;
+
+        // Dynamically create whiteboard post buttons
+        const whiteboardPostButtons = document.getElementById('whiteboard-post-buttons');
+        whiteboardPostButtons.innerHTML = '';
+        state.roommates.forEach(person => {
+            const button = document.createElement('button');
+            button.type = 'submit';
+            button.className = `whiteboard-post-btn ${getPersonClass(person)}`;
+            button.dataset.person = person;
+            button.textContent = `Post as ${person}`;
+            whiteboardPostButtons.appendChild(button);
+        });
 
 
         // Render Fund
@@ -193,17 +207,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Render Analytics
-        const [p1, p2] = state.roommates;
-        const p1Total = state.contributions[p1] || 0, p2Total = state.contributions[p2] || 0;
-        sageTotalContribEl.textContent = `$${p1Total.toFixed(2)}`;
-        emilyTotalContribEl.textContent = `$${p2Total.toFixed(2)}`;
-        const p1Avg = calculateMonthlyAverage(p1), p2Avg = calculateMonthlyAverage(p2);
-        sageAvgContribEl.textContent = `$${p1Avg.toFixed(2)}`;
-        emilyAvgContribEl.textContent = `$${p2Avg.toFixed(2)}`;
-        const diff = p1Total - p2Total;
-        if (diff > 5) { equalizerTextEl.innerHTML = `<span class="person-name ${getPersonClass(p2)}">${p2}</span> needs to add <b>$${diff.toFixed(2)}</b> to catch up.`; }
-        else if (diff < -5) { equalizerTextEl.innerHTML = `<span class="person-name ${getPersonClass(p1)}">${p1}</span> needs to add <b>$${Math.abs(diff).toFixed(2)}</b> to catch up.`; }
-        else { equalizerTextEl.textContent = 'Contributions are balanced.'; }
+        const contributionStatsEl = document.getElementById('contribution-stats-container');
+        contributionStatsEl.innerHTML = '';
+        const totalContributions = Object.values(state.contributions).reduce((sum, val) => sum + val, 0);
+        const averageContribution = totalContributions / state.roommates.length;
+
+        state.roommates.forEach(person => {
+            const pTotal = state.contributions[person] || 0;
+            const pAvg = calculateMonthlyAverage(person);
+            const pEl = document.createElement('p');
+            pEl.innerHTML = `<b>${person}:</b> <span class="${getPersonClass(person)}">$${pTotal.toFixed(2)}</span> total ($${pAvg.toFixed(2)}/mo avg)`;
+            contributionStatsEl.appendChild(pEl);
+        });
+
+        if (state.roommates.length > 1) {
+            const balanceMessages = [];
+            state.roommates.forEach(person => {
+                const balance = (state.contributions[person] || 0) - averageContribution;
+                if (balance < -1) {
+                    balanceMessages.push(`<span class="person-name ${getPersonClass(person)}">${person}</span> owes <b>$${Math.abs(balance).toFixed(2)}</b>`);
+                }
+            });
+            if (balanceMessages.length > 0) {
+                equalizerTextEl.innerHTML = balanceMessages.join(', ') + ' to the pot.';
+            } else {
+                equalizerTextEl.textContent = 'Contributions are balanced.';
+            }
+        } else {
+            equalizerTextEl.textContent = 'Add more roommates to track balance.';
+        }
+
 
         // Render Mileage
         mileageTotalEl.textContent = `$${state.mileageTotal.toFixed(2)}`;
@@ -258,32 +291,59 @@ document.addEventListener('DOMContentLoaded', () => {
         populateDropdown(iouOwerEl, state.roommates);
         populateDropdown(billPayerEl, state.roommates, true);
 
-
         // Calculate IOU summary
-        const [p1, p2] = state.roommates;
-        let p1OwesP2 = 0;
-        let p2OwesP1 = 0;
+        const debts = {};
+        state.roommates.forEach(p1 => {
+            debts[p1] = {};
+            state.roommates.forEach(p2 => {
+                if (p1 !== p2) debts[p1][p2] = 0;
+            });
+        });
 
         state.ious.forEach(iou => {
-            if (iou.payer === p1 && iou.ower === p2) {
-                p2OwesP1 += iou.amount;
-            } else if (iou.payer === p2 && iou.ower === p1) {
-                p1OwesP2 += iou.amount;
+            if (debts[iou.ower] && debts[iou.ower][iou.payer] !== undefined) {
+                debts[iou.ower][iou.payer] += iou.amount;
             }
         });
 
-        const netDebt = p1OwesP2 - p2OwesP1;
-        if (Math.abs(netDebt) < 0.01) {
-            iouSummaryTextEl.textContent = 'No one owes anything.';
-        } else if (netDebt > 0) {
-            const owerClass = getPersonClass(p1);
-            const payerClass = getPersonClass(p2);
-            iouSummaryTextEl.innerHTML = `<span class="person-name ${owerClass}">${p1}</span> owes <span class="person-name ${payerClass}">${p2}</span> <b>$${netDebt.toFixed(2)}</b>.`;
+        const summaryMessages = [];
+        const processedPairs = new Set();
+
+        state.roommates.forEach(p1 => {
+            state.roommates.forEach(p2 => {
+                if (p1 === p2) return;
+                const pairKey = [p1, p2].sort().join('-');
+                if (processedPairs.has(pairKey)) return;
+
+                const p1OwesP2 = debts[p1][p2] || 0;
+                const p2OwesP1 = debts[p2][p1] || 0;
+                const netDebt = p1OwesP2 - p2OwesP1;
+
+                if (Math.abs(netDebt) > 0.01) {
+                    let ower, payer, amount;
+                    if (netDebt > 0) {
+                        ower = p1;
+                        payer = p2;
+                        amount = netDebt;
+                    } else {
+                        ower = p2;
+                        payer = p1;
+                        amount = -netDebt;
+                    }
+                    const owerClass = getPersonClass(ower);
+                    const payerClass = getPersonClass(payer);
+                    summaryMessages.push(`<span class="person-name ${owerClass}">${ower}</span> owes <span class="person-name ${payerClass}">${payer}</span> <b>$${amount.toFixed(2)}</b>`);
+                }
+                processedPairs.add(pairKey);
+            });
+        });
+
+        if (summaryMessages.length === 0) {
+            iouSummaryTextEl.textContent = 'Everyone is settled up.';
         } else {
-            const owerClass = getPersonClass(p2);
-            const payerClass = getPersonClass(p1);
-            iouSummaryTextEl.innerHTML = `<span class="person-name ${owerClass}">${p2}</span> owes <span class="person-name ${payerClass}">${p1}</span> <b>$${Math.abs(netDebt).toFixed(2)}</b>.`;
+            iouSummaryTextEl.innerHTML = summaryMessages.join('<br>');
         }
+
 
         // Render IOU history
         iouHistoryEl.innerHTML = '';
@@ -337,15 +397,16 @@ document.addEventListener('DOMContentLoaded', () => {
         recurringChoreListEl.innerHTML = '';
         completedChoreListEl.innerHTML = '';
         const now = new Date();
-        const [p1, p2] = state.roommates;
 
         const oneTimeChores = state.chores.filter(c => c.isOneTime);
         const recurringChores = state.chores.filter(c => !c.isOneTime);
 
         const renderChoreItem = (chore, isRecurring) => {
-            const personClass1 = getPersonClass(p1);
-            const personClass2 = getPersonClass(p2);
             let timerHtml = '';
+            const choreActions = state.roommates.map(p =>
+                `<button class="chore-btn ${getPersonClass(p)}" data-chore-id="${chore.id}" data-person="${p}">${p} did it</button>`
+            ).join('');
+
             if (isRecurring) {
                 const lastCompletedDate = chore.lastCompletedDate ? new Date(chore.lastCompletedDate) : null;
                 const dueDate = lastCompletedDate ? new Date(lastCompletedDate.getTime() + chore.durationDays * 86400000) : null;
@@ -363,16 +424,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 timerHtml = `
                     <div class="chore-status">
                         <span class="chore-timer" style="color: ${timerColor};">${timerText}</span>
-                        <div class="chore-actions">
-                            <button class="chore-btn ${personClass1}" data-chore-id="${chore.id}" data-person="${p1}">${p1} did it</button>
-                            <button class="chore-btn ${personClass2}" data-chore-id="${chore.id}" data-person="${p2}">${p2} did it</button>
-                        </div>
+                        <div class="chore-actions">${choreActions}</div>
                     </div>`;
             } else {
-                 timerHtml = `<div class="chore-actions">
-                        <button class="chore-btn ${personClass1}" data-chore-id="${chore.id}" data-person="${p1}">${p1} did it</button>
-                        <button class="chore-btn ${personClass2}" data-chore-id="${chore.id}" data-person="${p2}">${p2} did it</button>
-                    </div>`;
+                 timerHtml = `<div class="chore-actions">${choreActions}</div>`;
             }
 
             const age = Math.floor((now - new Date(chore.creationDate)) / (1000 * 60 * 60 * 24));
@@ -419,9 +474,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (contributionChart) contributionChart.destroy();
         if (categoryChart) categoryChart.destroy();
 
-        const [p1, p2] = state.roommates;
-        const p1Class = getPersonClass(p1);
-        const p2Class = getPersonClass(p2);
+        const chartColors = {
+            'sage': '#9b59b6',
+            'emily': '#3498db',
+            'susan': '#2ecc71',
+            'default': ['#f1c40f', '#e67e22', '#e74c3c', '#1abc9c']
+        };
+        let colorIndex = 0;
+
+        const getPersonColor = (person) => {
+            const pClass = getPersonClass(person);
+            return chartColors[pClass] || chartColors.default[colorIndex++ % chartColors.default.length];
+        };
 
         // Contribution Chart
         const contributionCtx = document.getElementById('contribution-chart').getContext('2d');
@@ -429,30 +493,44 @@ document.addEventListener('DOMContentLoaded', () => {
         if (contributions.length > 0) {
             contributions.sort((a, b) => new Date(a.date) - new Date(b.date));
             const dailyContributions = new Map();
+            const cumulativeContributions = {};
+            state.roommates.forEach(r => cumulativeContributions[r] = 0);
+
             contributions.forEach(c => {
                 const date = new Date(c.date).toLocaleDateString();
-                if (!dailyContributions.has(date)) dailyContributions.set(date, { [p1]: 0, [p2]: 0 });
-                dailyContributions.get(date)[c.person] += c.amount;
+                if (!dailyContributions.has(date)) {
+                    const dailyTotals = {};
+                    state.roommates.forEach(r => dailyTotals[r] = 0);
+                    dailyContributions.set(date, dailyTotals);
+                }
+                if(dailyContributions.get(date)[c.person] !== undefined) {
+                    dailyContributions.get(date)[c.person] += c.amount;
+                }
             });
-            const labels = [], p1Data = [], p2Data = [];
-            let p1Cumulative = 0, p2Cumulative = 0;
-            for (const [date, dailyTotal] of dailyContributions.entries()) {
-                labels.push(date);
-                p1Cumulative += dailyTotal[p1];
-                p2Cumulative += dailyTotal[p2];
-                p1Data.push(p1Cumulative);
-                p2Data.push(p2Cumulative);
-            }
+
+            const labels = Array.from(dailyContributions.keys());
+            const datasets = state.roommates.map(person => {
+                const data = [];
+                let cumulative = 0;
+                labels.forEach(label => {
+                    const dailyTotal = dailyContributions.get(label)[person] || 0;
+                    cumulative += dailyTotal;
+                    data.push(cumulative);
+                });
+                const color = getPersonColor(person);
+                return {
+                    label: `${person}'s Contributions`,
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: `${color}1A`, // Add alpha for fill
+                    fill: true,
+                    tension: 0.1
+                };
+            });
+
             contributionChart = new Chart(contributionCtx, {
                 type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: `${p1}'s Contributions`, data: p1Data, borderColor: p1Class === 'sage' ? '#9b59b6' : '#3498db', backgroundColor: p1Class === 'sage' ? 'rgba(155, 89, 182, 0.1)' : 'rgba(52, 152, 219, 0.1)', fill: true, tension: 0.1
-                    }, {
-                        label: `${p2}'s Contributions`, data: p2Data, borderColor: p2Class === 'emily' ? '#3498db' : '#9b59b6', backgroundColor: p2Class === 'emily' ? 'rgba(52, 152, 219, 0.1)' : 'rgba(155, 89, 182, 0.1)', fill: true, tension: 0.1
-                    }]
-                },
+                data: { labels, datasets },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { labels: { color: textColor } } } }
             });
         }
@@ -485,8 +563,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderSettings() {
         // General
-        roommate1NameInput.value = getPersonName(0);
-        roommate2NameInput.value = getPersonName(1);
+        const roommateSettingsContainer = document.getElementById('roommate-settings-container');
+        roommateSettingsContainer.innerHTML = '';
+        state.roommates.forEach((name, index) => {
+            const row = document.createElement('div');
+            row.className = 'setting-row';
+            row.innerHTML = `
+                <label for="roommate${index}-name">Roommate ${index + 1} Name:</label>
+                <input type="text" id="roommate${index}-name" data-index="${index}" value="${name}">
+            `;
+            roommateSettingsContainer.appendChild(row);
+        });
+
         themeToggleSettings.checked = document.body.classList.contains('dark-mode');
 
         // Mileage
@@ -583,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addMessage(e) {
         e.preventDefault();
-        const person = e.submitter.dataset.person === 'Sage' ? state.roommates[0] : state.roommates[1];
+        const person = e.submitter.dataset.person;
         const message = whiteboardMessageEl.value;
         if (!message || !person) return;
         state.whiteboard.push({ message, person, date: new Date().toISOString() });
@@ -790,10 +878,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Update history
-        state.fundHistory.forEach(item => { if (item.person === oldName) item.person = newName; });
-        state.chores.forEach(item => { if (item.lastCompletedBy === oldName) item.lastCompletedBy = newName; });
-        state.completedChores.forEach(item => { if (item.lastCompletedBy === oldName) item.lastCompletedBy = newName; });
-        state.whiteboard.forEach(item => { if (item.person === oldName) item.person = newName; });
+        const keysToUpdate = ['person', 'lastCompletedBy', 'payer', 'ower', 'addedBy', 'claimedBy', 'purchasedBy'];
+        const arraysToUpdate = [
+            state.fundHistory, state.chores, state.completedChores,
+            state.whiteboard, state.ious, state.shoppingList,
+            state.wishlist, state.recentlyPurchased
+        ];
+
+        arraysToUpdate.forEach(arr => {
+            if (arr) {
+                arr.forEach(item => {
+                    keysToUpdate.forEach(key => {
+                        if (item[key] === oldName) {
+                            item[key] = newName;
+                        }
+                    });
+                });
+            }
+        });
+
 
         saveData();
         render();
@@ -826,18 +929,18 @@ document.addEventListener('DOMContentLoaded', () => {
         shoppingListEl.innerHTML = '';
         wishlistEl.innerHTML = '';
         recentlyPurchasedListEl.innerHTML = '';
-        const [p1, p2] = state.roommates;
 
         const renderItem = (item, listType) => {
-            const personClass1 = getPersonClass(p1);
-            const personClass2 = getPersonClass(p2);
             let actionButtons = '';
             if (listType === 'shopping' || listType === 'wish') {
                  if (item.claimedBy) {
                     const claimedClass = getPersonClass(item.claimedBy);
                     actionButtons = `<div class="shopping-actions"><span class="claimed-by ${claimedClass}">${item.claimedBy} will buy</span> <button class="shopping-btn unclaim" data-id="${item.id}" data-list="${listType}">Unclaim</button> <button class="shopping-btn purchase" data-id="${item.id}" data-list="${listType}">Purchased</button></div>`;
                 } else {
-                    actionButtons = `<div class="shopping-actions"><button class="shopping-btn claim ${personClass1}" data-id="${item.id}" data-person="${p1}" data-list="${listType}">${p1} will buy</button> <button class="shopping-btn claim ${personClass2}" data-id="${item.id}" data-person="${p2}" data-list="${listType}">${p2} will buy</button></div>`;
+                    const claimButtons = state.roommates.map(p =>
+                        `<button class="shopping-btn claim ${getPersonClass(p)}" data-id="${item.id}" data-person="${p}" data-list="${listType}">${p} will buy</button>`
+                    ).join('');
+                    actionButtons = `<div class="shopping-actions">${claimButtons}</div>`;
                 }
             }
             const addedByClass = getPersonClass(item.addedBy);
@@ -997,8 +1100,13 @@ document.addEventListener('DOMContentLoaded', () => {
     choreForm.addEventListener('submit', addChore);
     shoppingItemForm.addEventListener('submit', addShoppingItem);
     addCategoryForm.addEventListener('submit', addExpenseCategory);
-    roommate1NameInput.addEventListener('change', (e) => updateRoommateName(0, e.target.value));
-    roommate2NameInput.addEventListener('change', (e) => updateRoommateName(1, e.target.value));
+    document.getElementById('roommate-settings-container').addEventListener('change', (e) => {
+        if (e.target.matches('input[type="text"]')) {
+            const index = parseInt(e.target.dataset.index, 10);
+            const newName = e.target.value;
+            updateRoommateName(index, newName);
+        }
+    });
     themeToggle.addEventListener('change', (e) => switchTheme(e.target.checked));
     themeToggleSettings.addEventListener('change', (e) => switchTheme(e.target.checked));
 
