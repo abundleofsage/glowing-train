@@ -1,9 +1,10 @@
 function generateRandomData() {
     console.log("Generating test data...");
 
+    // This structure MUST match the defaultState in script.js
     const state = {
         fundBalance: 0,
-        contributions: { Sage: 0, Emily: 0 },
+        contributions: {}, // Will be populated based on roommates
         fundHistory: [],
         mileageTotal: 0,
         mileageSettings: {
@@ -16,7 +17,16 @@ function generateRandomData() {
         whiteboard: [],
         chores: [],
         completedChores: [],
+        shoppingList: [],
+        wishlist: [],
+        recentlyPurchased: [],
+        ious: [],
+        roommates: ['Sage', 'Emily', 'Susan'],
+        expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other', 'Household', 'Personal Care'],
     };
+
+    // Initialize contributions object
+    state.roommates.forEach(r => state.contributions[r] = 0);
 
     const now = new Date();
     const oneYearAgo = new Date(now);
@@ -25,9 +35,8 @@ function generateRandomData() {
     const rand = (min, max) => Math.random() * (max - min) + min;
     const randInt = (min, max) => Math.floor(rand(min, max + 1));
     const randomDate = () => new Date(oneYearAgo.getTime() + Math.random() * (now.getTime() - oneYearAgo.getTime()));
+    const randomPerson = () => state.roommates[randInt(0, state.roommates.length - 1)];
 
-    const people = ['Sage', 'Emily'];
-    const expenseCats = ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'];
     const tripDescs = ['Coffee run', 'Visit friends', 'Weekend trip', 'Commute', 'Store pickup', 'Airport drop-off', 'IKEA adventure', 'Beach day', 'Mountain drive'];
     const choreDescs = [
         { desc: 'Clean the kitchen', recurring: true, days: 7 },
@@ -51,37 +60,97 @@ function generateRandomData() {
         "Got concert tickets for next month!"
     ];
 
-    // --- Generate Fund History (Contributions & Expenses) ---
-    const numFundEntries = randInt(250, 400); // Increased from (80, 150)
-    for (let i = 0; i < numFundEntries; i++) {
-        const date = randomDate();
-        if (Math.random() < 0.4) { // 40% chance of being a contribution
-            const person = people[randInt(0, 1)];
-            const amount = rand(20, 250); // Slightly increased max
-            state.fundHistory.push({ type: 'contribution', person, amount, date: date.toISOString() });
-        } else { // 60% chance of being an expense
-            const description = expenseCats[randInt(0, 4)] + ' purchase';
-            const category = expenseCats[randInt(0, 4)];
-            const amount = -rand(5, 180); // Slightly increased max
-            state.fundHistory.push({ type: 'expense', description, category, amount, date: date.toISOString() });
+    // --- Generate More Realistic Fund History ---
+    // Simulate each person contributing ~$50/month for the past 12 months
+    for (let i = 0; i < 12; i++) {
+        state.roommates.forEach(person => {
+            // Add a monthly contribution
+            const contributionDate = new Date(oneYearAgo);
+            contributionDate.setMonth(oneYearAgo.getMonth() + i);
+            contributionDate.setDate(randInt(1, 5)); // Contribution at start of month
+            state.fundHistory.push({
+                type: 'contribution',
+                person,
+                amount: rand(45, 55), // around $50
+                date: contributionDate.toISOString()
+            });
+        });
+
+        // Add a few random expenses for the month
+        const numExpenses = randInt(5, 10);
+        for (let j = 0; j < numExpenses; j++) {
+             const expenseDate = new Date(oneYearAgo);
+             expenseDate.setMonth(oneYearAgo.getMonth() + i);
+             expenseDate.setDate(randInt(1, 28)); // Expense sometime in the month
+             const category = state.expenseCategories[randInt(0, state.expenseCategories.length - 1)];
+             state.fundHistory.push({
+                type: 'expense',
+                description: `${category} purchase`,
+                category: category,
+                amount: -rand(10, 75), // Smaller, more frequent expenses
+                date: expenseDate.toISOString()
+            });
         }
     }
 
-    // --- Generate Mileage History (Trips & Payments) ---
-    const numMileageEntries = randInt(100, 200); // Increased from (40, 80)
+
+    // --- Generate More Realistic Mileage History for Emily ---
+    // "Emily will probably only need rides around town a few times a week"
+    // This is ~8-12 trips a month. Let's say ~100 trips over the year.
+    const numMileageEntries = randInt(90, 120);
     for (let i = 0; i < numMileageEntries; i++) {
         const date = randomDate();
-        if (Math.random() < 0.8) { // 80% chance of being a trip
-            const description = tripDescs[randInt(0, tripDescs.length - 1)];
-            const miles = rand(5, 150); // Slightly increased max
+        // 95% chance of being a trip, 5% of being a payment
+        if (Math.random() < 0.95) {
+            const description = tripDescs[randInt(0, 5)]; // More mundane, local trips
+            const miles = rand(3, 25); // "around town"
             const rate = (state.mileageSettings.gasCost / state.mileageSettings.mpg) + state.mileageSettings.maintenance + state.mileageSettings.convenience;
             const cost = miles * rate;
             state.mileageHistory.push({ type: 'trip', description, miles, cost, date: date.toISOString() });
-        } else { // 20% chance of being a payment
-            const amount = rand(20, 100);
+        } else { // 5% chance of being a payment
+            const amount = rand(20, 50); // Smaller, more frequent payments
             state.mileageHistory.push({ type: 'payment', amount, date: date.toISOString() });
         }
     }
+
+    // --- Generate IOUs ---
+    const numIous = randInt(15, 30);
+    for (let i = 0; i < numIous; i++) {
+        let payer = randomPerson();
+        let ower = randomPerson();
+        while (payer === ower) { ower = randomPerson(); } // Ensure payer and ower are different
+
+        state.ious.push({
+            id: `iou_${Date.now()}_${i}`,
+            payer,
+            ower,
+            amount: rand(5, 75),
+            description: `For ${['lunch', 'tickets', 'a shared item', 'that thing'][randInt(0,3)]}`,
+            date: randomDate().toISOString()
+        });
+    }
+
+    // --- Generate Shopping & Wishlist Items ---
+    const shoppingItems = ["Milk", "Bread", "Eggs", "Cheese", "Coffee", "Paper Towels", "Dish Soap", "Laundry Detergent"];
+    const wishItems = ["New couch", "Blender", "Air fryer", "Board game", "Art for the living room"];
+
+    shoppingItems.forEach(item => {
+        if (Math.random() < 0.8) { // 80% chance to be on a list
+            const newItem = {
+                id: `s_${Date.now()}_${randInt(1000,9999)}`,
+                description: item,
+                addedBy: randomPerson(),
+                date: randomDate().toISOString(),
+                claimedBy: null
+            };
+            if(Math.random() < 0.3) { // 30% chance of being a wish
+                 state.wishlist.push(newItem);
+            } else {
+                 state.shoppingList.push(newItem);
+            }
+        }
+    });
+
 
     // --- Generate Chores ---
     choreDescs.forEach(c => {
@@ -101,7 +170,7 @@ function generateRandomData() {
                 lastCompletion = new Date(lastCompletion.getTime() + rand(1, c.days * 1.5) * 86400000);
                 if (lastCompletion < now) {
                     newChore.lastCompletedDate = lastCompletion.toISOString();
-                    newChore.lastCompletedBy = people[randInt(0, 1)];
+                    newChore.lastCompletedBy = randomPerson();
                 }
             }
         }
@@ -110,21 +179,29 @@ function generateRandomData() {
 
     // --- Generate Whiteboard Messages ---
     whiteboardMsgs.forEach(msg => {
-        state.whiteboard.push({ message: msg, date: randomDate().toISOString() });
+        state.whiteboard.push({
+            message: msg,
+            person: randomPerson(), // Add a person to the message
+            date: randomDate().toISOString()
+        });
     });
 
     // --- Sort Histories by Date ---
     state.fundHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
     state.mileageHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+    state.ious.sort((a, b) => new Date(a.date) - new Date(b.date));
+
 
     // --- Final Calculation Pass ---
     // This mimics the recalculateTotals function in the main script
     state.fundBalance = 0;
-    state.contributions = { Sage: 0, Emily: 0 };
+    state.roommates.forEach(r => state.contributions[r] = 0);
     state.fundHistory.forEach(item => {
         if (item.type === 'contribution') {
             state.fundBalance += item.amount;
-            state.contributions[item.person] += item.amount;
+            if (state.contributions[item.person] !== undefined) {
+                state.contributions[item.person] += item.amount;
+            }
         } else if (item.type === 'expense') {
             state.fundBalance += item.amount; // Amount is already negative
         }
