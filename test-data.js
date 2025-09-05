@@ -151,6 +151,21 @@ function generateRandomData() {
         }
     });
 
+    // --- Generate Recently Purchased Items ---
+    const purchasedItems = ["Pizza ingredients", "Light bulbs", "Cleaning spray", "Sponges"];
+    purchasedItems.forEach(item => {
+        const purchaser = randomPerson();
+        state.recentlyPurchased.push({
+            id: `p_${Date.now()}_${randInt(1000,9999)}`,
+            description: item,
+            addedBy: randomPerson(),
+            date: randomDate().toISOString(),
+            claimedBy: purchaser,
+            purchasedBy: purchaser,
+            purchaseDate: new Date(Date.now() - rand(1, 6) * 86400000).toISOString() // Purchased in the last week
+        });
+    });
+
 
     // --- Generate Chores ---
     choreDescs.forEach(c => {
@@ -174,15 +189,32 @@ function generateRandomData() {
                 }
             }
         }
-        state.chores.push(newChore);
+
+        // For one-time chores, randomly decide if it was completed
+        if (newChore.isOneTime && Math.random() < 0.4) { // 40% chance of being completed
+            newChore.completionDate = new Date(new Date(newChore.creationDate).getTime() + rand(1, 10) * 86400000).toISOString();
+            newChore.lastCompletedBy = randomPerson();
+            state.completedChores.push(newChore);
+        } else {
+            state.chores.push(newChore);
+        }
     });
 
     // --- Generate Whiteboard Messages ---
-    whiteboardMsgs.forEach(msg => {
+    whiteboardMsgs.forEach((msg, i) => {
+        const person = randomPerson();
+        // Simulate some messages being seen
+        const seenCount = randInt(0, state.roommates.length - 1);
+        const viewers = [...state.roommates].filter(r => r !== person).sort(() => 0.5 - Math.random());
+        const seenBy = viewers.slice(0, seenCount);
+
         state.whiteboard.push({
+            id: `w_${Date.now()}_${i}`,
             message: msg,
-            person: randomPerson(), // Add a person to the message
-            date: randomDate().toISOString()
+            person: person,
+            date: randomDate().toISOString(),
+            replies: [], // For simplicity, test data will not have nested replies
+            seenBy: seenBy
         });
     });
 
