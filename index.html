@@ -15,8 +15,9 @@
             <button class="nav-button" data-index="1">Mileage</button>
             <button class="nav-button" data-index="2">Charts</button>
             <button class="nav-button" data-index="3">Chores</button>
-            <button class="nav-button" data-index="4">Whiteboard</button>
-            <button class="nav-button" data-index="5">Settings</button>
+            <button class="nav-button" data-index="4">Shopping</button>
+            <button class="nav-button" data-index="5">Whiteboard</button>
+            <button class="nav-button" data-index="6">Settings</button>
         </div>
         <div class="header-controls">
             <button id="export-button" class="control-button">Export</button>
@@ -152,6 +153,41 @@
                 <h3>Completed Chores</h3>
                 <ul id="completed-chore-list">
                     <!-- Completed chore items will be rendered here -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Shopping List Section -->
+        <div class="card">
+            <h2>Shopping List</h2>
+            <div class="form-container">
+                <form id="shopping-item-form">
+                    <input type="text" id="shopping-item-description" placeholder="Item to buy" required>
+                    <select id="shopping-item-type">
+                        <option value="list">Shopping List</option>
+                        <option value="wish">Wishlist</option>
+                    </select>
+                    <button type="submit">Add Item</button>
+                </form>
+            </div>
+
+            <div class="shopping-section">
+                <h3>Need to Buy</h3>
+                <ul id="shopping-list">
+                    <!-- Shopping list items will be rendered here -->
+                </ul>
+            </div>
+
+            <div class="shopping-section">
+                <h3>Wishlist</h3>
+                <ul id="wishlist">
+                    <!-- Wishlist items will be rendered here -->
+                </ul>
+            </div>
+             <div class="shopping-section">
+                <h3>Recently Purchased</h3>
+                <ul id="recently-purchased-list">
+                    <!-- Recently purchased items will be rendered here -->
                 </ul>
             </div>
         </div>

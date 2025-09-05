@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const oneTimeChoreListEl = document.getElementById('one-time-chore-list');
     const recurringChoreListEl = document.getElementById('recurring-chore-list');
     const completedChoreListEl = document.getElementById('completed-chore-list');
+    const shoppingItemForm = document.getElementById('shopping-item-form');
+    const shoppingItemDescriptionEl = document.getElementById('shopping-item-description');
+    const shoppingItemTypeEl = document.getElementById('shopping-item-type');
+    const shoppingListEl = document.getElementById('shopping-list');
+    const wishlistEl = document.getElementById('wishlist');
+    const recentlyPurchasedListEl = document.getElementById('recently-purchased-list');
     const resetButton = document.getElementById('reset-button');
     const exportButton = document.getElementById('export-button');
     const importButton = document.getElementById('import-button');
@@ -67,6 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
         whiteboard: [],
         chores: [],
         completedChores: [],
+        shoppingList: [],
+        wishlist: [],
+        recentlyPurchased: [],
         roommates: ['Sage', 'Emily'],
         expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'],
     };
@@ -105,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         purgeOldCompletedChores();
+        purgeOldRecentlyPurchased();
         saveData();
     }
 
@@ -217,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderCharts();
         renderChores();
+        renderShoppingList();
         renderSettings();
     }
 
@@ -550,6 +561,130 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function renderShoppingList() {
+        shoppingListEl.innerHTML = '';
+        wishlistEl.innerHTML = '';
+        recentlyPurchasedListEl.innerHTML = '';
+        const [p1, p2] = state.roommates;
+
+        const renderItem = (item, listType) => {
+            const personClass1 = getPersonClass(p1);
+            const personClass2 = getPersonClass(p2);
+            let actionButtons = '';
+            if (listType === 'shopping' || listType === 'wish') {
+                 if (item.claimedBy) {
+                    const claimedClass = getPersonClass(item.claimedBy);
+                    actionButtons = `<div class="shopping-actions"><span class="claimed-by ${claimedClass}">${item.claimedBy} will buy</span> <button class="shopping-btn unclaim" data-id="${item.id}" data-list="${listType}">Unclaim</button> <button class="shopping-btn purchase" data-id="${item.id}" data-list="${listType}">Purchased</button></div>`;
+                } else {
+                    actionButtons = `<div class="shopping-actions"><button class="shopping-btn claim ${personClass1}" data-id="${item.id}" data-person="${p1}" data-list="${listType}">${p1} will buy</button> <button class="shopping-btn claim ${personClass2}" data-id="${item.id}" data-person="${p2}" data-list="${listType}">${p2} will buy</button></div>`;
+                }
+            }
+            const addedByClass = getPersonClass(item.addedBy);
+            return `
+                <li class="shopping-item">
+                    <div class="shopping-info">
+                        <span class="shopping-description">${item.description}</span>
+                        <small>Added by <span class="person-name ${addedByClass}">${item.addedBy}</span> on ${new Date(item.date).toLocaleDateString()}</small>
+                    </div>
+                    ${actionButtons}
+                </li>`;
+        };
+
+        if(state.shoppingList.length === 0) shoppingListEl.innerHTML = '<li>Nothing to buy.</li>';
+        else state.shoppingList.forEach(item => shoppingListEl.innerHTML += renderItem(item, 'shopping'));
+
+        if(state.wishlist.length === 0) wishlistEl.innerHTML = '<li>No wishes yet.</li>';
+        else state.wishlist.forEach(item => wishlistEl.innerHTML += renderItem(item, 'wish'));
+
+        if (state.recentlyPurchased.length === 0) recentlyPurchasedListEl.innerHTML = '<li>No items purchased recently.</li>';
+        else state.recentlyPurchased.sort((a,b) => new Date(b.purchaseDate) - new Date(a.purchaseDate)).forEach(item => {
+            const purchaserClass = getPersonClass(item.purchasedBy);
+            recentlyPurchasedListEl.innerHTML += `
+                <li class="shopping-item purchased">
+                    <div class="shopping-info">
+                        <span class="shopping-description">${item.description}</span>
+                        <small>Purchased by <span class="person-name ${purchaserClass}">${item.purchasedBy}</span> on ${new Date(item.purchaseDate).toLocaleDateString()}</small>
+                    </div>
+                </li>`;
+        });
+    }
+
+     function addShoppingItem(e) {
+        e.preventDefault();
+        const description = shoppingItemDescriptionEl.value.trim();
+        const type = shoppingItemTypeEl.value;
+        if (!description) return;
+
+        const person = state.roommates[0]; // For now, default to first roommate. A better implementation might ask who is adding it.
+
+        const newItem = {
+            id: `s_${Date.now()}`,
+            description,
+            addedBy: person,
+            date: new Date().toISOString(),
+            claimedBy: null
+        };
+
+        if (type === 'list') {
+            state.shoppingList.push(newItem);
+        } else {
+            state.wishlist.push(newItem);
+        }
+
+        shoppingItemDescriptionEl.value = '';
+        saveData();
+        render();
+    }
+
+    function claimShoppingItem(id, person, listType) {
+        const list = listType === 'shopping' ? state.shoppingList : state.wishlist;
+        const item = list.find(i => i.id === id);
+        if (item) {
+            item.claimedBy = person;
+            saveData();
+            render();
+        }
+    }
+
+    function unclaimShoppingItem(id, listType) {
+        const list = listType === 'shopping' ? state.shoppingList : state.wishlist;
+        const item = list.find(i => i.id === id);
+        if (item) {
+            item.claimedBy = null;
+            saveData();
+            render();
+        }
+    }
+
+    function purchaseShoppingItem(id, listType) {
+        const list = listType === 'shopping' ? state.shoppingList : state.wishlist;
+        const itemIndex = list.findIndex(i => i.id === id);
+        if (itemIndex > -1) {
+            const item = list[itemIndex];
+            if (!item.claimedBy) {
+                alert("Please claim the item before marking it as purchased.");
+                return;
+            }
+            const purchasedItem = {
+                ...item,
+                purchasedBy: item.claimedBy,
+                purchaseDate: new Date().toISOString()
+            };
+            state.recentlyPurchased.push(purchasedItem);
+            list.splice(itemIndex, 1);
+            purgeOldRecentlyPurchased();
+            saveData();
+            render();
+        }
+    }
+
+    function purgeOldRecentlyPurchased() {
+        if (!state.recentlyPurchased) state.recentlyPurchased = [];
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        state.recentlyPurchased = state.recentlyPurchased.filter(i => new Date(i.purchaseDate).getTime() > sevenDaysAgo);
+    }
+
+
     // --- Theme Switcher ---
     function switchTheme(isDark) {
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
@@ -573,6 +708,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.matches('.delete-category-btn')) {
             deleteExpenseCategory(e.target.dataset.category);
         }
+        if (e.target.matches('.shopping-btn.claim')) {
+            claimShoppingItem(e.target.dataset.id, e.target.dataset.person, e.target.dataset.list);
+        }
+        if (e.target.matches('.shopping-btn.unclaim')) {
+            unclaimShoppingItem(e.target.dataset.id, e.target.dataset.list);
+        }
+        if (e.target.matches('.shopping-btn.purchase')) {
+            purchaseShoppingItem(e.target.dataset.id, e.target.dataset.list);
+        }
     });
 
     contributionForm.addEventListener('submit', addContribution);
@@ -587,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
     importFileEl.addEventListener('change', importData);
     loadTestDataButton.addEventListener('click', () => { if(confirm('Load test data? This will overwrite current data.')){state=generateRandomData();saveData();render();}});
     choreForm.addEventListener('submit', addChore);
+    shoppingItemForm.addEventListener('submit', addShoppingItem);
     addCategoryForm.addEventListener('submit', addExpenseCategory);
     roommate1NameInput.addEventListener('change', (e) => updateRoommateName(0, e.target.value));
     roommate2NameInput.addEventListener('change', (e) => updateRoommateName(1, e.target.value));
