@@ -26,6 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Settings
     const themeToggleSettings = document.getElementById('theme-toggle-settings');
     const expenseCategoryListEl = document.getElementById('expense-category-list');
+    const purchaseModal = document.getElementById('purchase-modal');
+    const purchaseForm = document.getElementById('purchase-form');
+    const purchaseTaskId = document.getElementById('purchase-task-id');
+    const purchaseItemName = document.getElementById('purchase-item-name');
+    const purchasePrice = document.getElementById('purchase-price');
+    const purchaseCategory = document.getElementById('purchase-category');
+    const closeModalButton = document.querySelector('.close-button');
     const addCategoryForm = document.getElementById('add-category-form');
     const newCategoryNameInput = document.getElementById('new-category-name');
     const mileageSettingsForm = document.getElementById('mileage-settings-form');
@@ -371,11 +378,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderOverview() {
-        // --- Financial Summary ---
+        // --- Latest Whiteboard Message ---
         const financialSummaryEl = document.getElementById('financial-summary-content');
-        let summaryHTML = `<p><b>Shared Fund Balance:</b> <span style="color: ${state.fundBalance >= 0 ? 'green' : 'red'};">$${state.fundBalance.toFixed(2)}</span></p>`;
-        summaryHTML += `<p><b>Mileage Owed:</b> $${state.mileageTotal.toFixed(2)}</p>`;
-        financialSummaryEl.innerHTML = summaryHTML;
+        if (state.whiteboard.length > 0) {
+            const latestMessage = state.whiteboard[state.whiteboard.length - 1];
+            let summaryHTML = `
+                <p class="whiteboard-overview-message">"${latestMessage.message}"</p>
+                <small> - Posted by ${latestMessage.person}, ${getMessageAge(latestMessage.date)}</small>
+            `;
+            financialSummaryEl.innerHTML = summaryHTML;
+        } else {
+            financialSummaryEl.innerHTML = '<p>No whiteboard messages yet.</p>';
+        }
+
 
         // --- Upcoming Chores ---
         const upcomingChoresListEl = document.getElementById('upcoming-chores-list');
@@ -1119,12 +1134,58 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("Please claim the item before marking it as purchased.");
                     return;
                 }
-                task.status = 'purchased';
-                task.purchasedBy = task.claimedBy;
-                task.purchaseDate = new Date().toISOString();
-                logActivity(`${task.purchasedBy} purchased: ${task.description}`);
+                openPurchaseModal(task);
                 break;
         }
+        saveData();
+        render();
+    }
+
+    function openPurchaseModal(task) {
+        purchaseTaskId.value = task.id;
+        purchaseItemName.textContent = task.description;
+        populateDropdown(purchaseCategory, state.expenseCategories);
+        purchaseModal.style.display = 'block';
+    }
+
+    function closePurchaseModal() {
+        purchaseModal.style.display = 'none';
+        purchaseForm.reset();
+    }
+
+    function handlePurchaseSubmit(e) {
+        e.preventDefault();
+        const taskId = purchaseTaskId.value;
+        const price = parseFloat(purchasePrice.value);
+        const category = purchaseCategory.value;
+        const task = state.tasks.find(t => t.id === taskId);
+
+        if (!task || isNaN(price) || price <= 0 || !category) {
+            alert('Invalid data. Please check the price and category.');
+            return;
+        }
+
+        // 1. Create a new expense transaction
+        const newTxn = {
+            id: `txn_${Date.now()}`,
+            date: new Date().toISOString(),
+            type: 'expense',
+            description: `Purchased: ${task.description}`,
+            category: category,
+            amount: price
+        };
+        state.transactions.push(newTxn);
+        logActivity(`Expense from purchase: ${task.description}`, -price);
+        recalculateTotals();
+
+        // 2. Mark the task as purchased
+        task.status = 'purchased';
+        task.purchasedBy = task.claimedBy;
+        task.purchaseDate = new Date().toISOString();
+        logActivity(`${task.purchasedBy} purchased: ${task.description}`);
+
+        // 3. Close modal and re-render
+        closePurchaseModal();
         saveData();
         render();
     }
@@ -1317,6 +1378,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     themeToggleSettings.addEventListener('change', (e) => switchTheme(e.target.checked));
+
+    purchaseForm.addEventListener('submit', handlePurchaseSubmit);
+    closeModalButton.addEventListener('click', closePurchaseModal);
+    window.addEventListener('click', (e) => {
+        if (e.target == purchaseModal) {
+            closePurchaseModal();
+        }
+    });
 
 
     // --- Card Navigation ---

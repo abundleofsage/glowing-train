@@ -68,7 +68,7 @@
             <h2>Overview</h2>
             <div class="overview-grid">
                 <div class="overview-section" id="financial-summary-section">
-                    <h3>Financial Summary</h3>
+                <h3>Latest Whiteboard Message</h3>
                     <div id="financial-summary-content"></div>
                 </div>
                 <div class="overview-section" id="upcoming-chores-section">
@@ -260,5 +260,24 @@
 
     <script src="test-data.js"></script>
     <script src="script.js"></script>
+
+    <!-- Purchase Modal -->
+    <div id="purchase-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Add Expense for Purchase</h3>
+            <form id="purchase-form">
+                <input type="hidden" id="purchase-task-id">
+                <p><strong>Item:</strong> <span id="purchase-item-name"></span></p>
+                <label for="purchase-price">Price:</label>
+                <input type="number" id="purchase-price" step="0.01" required>
+                <label for="purchase-category">Category:</label>
+                <select id="purchase-category" required>
+                    <!-- Categories will be populated by JS -->
+                </select>
+                <button type="submit">Add Expense & Mark Purchased</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
