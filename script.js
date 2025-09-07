@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tasks: [], // Unified tasks: chores, shopping, wishes
         transactions: [], // Unified transactions
         activityLog: [],
-        roommates: ['Sage', 'Emily', 'Susan'],
+        roommates: ['Sage', 'Emily'],
         expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'],
     };
 

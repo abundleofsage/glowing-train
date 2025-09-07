@@ -10,7 +10,7 @@ function generateRandomData() {
         tasks: [],
         transactions: [],
         activityLog: [],
-        roommates: ['Sage', 'Emily', 'Susan'],
+        roommates: ['Sage', 'Emily'],
         expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other', 'Household', 'Personal Care'],
     };
 

@@ -709,9 +709,6 @@ body.dark-mode .whiteboard-card .card-body p {
 }
 
 .replies-container {
-    margin-left: 20px;
-    padding-left: 10px;
-    border-left: 2px solid var(--border-color);
     display: flex;
     flex-direction: column;
     gap: 10px;
