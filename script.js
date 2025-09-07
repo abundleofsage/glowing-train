@@ -1,84 +1,41 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
+    // General
     const themeToggle = document.getElementById('theme-toggle');
-    const fundBalanceEl = document.getElementById('fund-balance');
-    const contributionForm = document.getElementById('contribution-form');
-    const contributionPersonEl = document.getElementById('contribution-person');
-    const contributionAmountEl = document.getElementById('contribution-amount');
-    const expenseForm = document.getElementById('expense-form');
-    const expenseDescriptionEl = document.getElementById('expense-description');
-    const expenseCategoryEl = document.getElementById('expense-category');
-    const expenseAmountEl = document.getElementById('expense-amount');
-    const fundHistoryEl = document.getElementById('fund-history');
-    const equalizerTextEl = document.getElementById('equalizer-text');
-    const mileageTotalEl = document.getElementById('mileage-total');
-    const mileageForm = document.getElementById('mileage-form');
-    const tripDescriptionEl = document.getElementById('trip-description');
-    const tripMilesEl = document.getElementById('trip-miles');
-    const paymentForm = document.getElementById('payment-form');
-    const paymentAmountEl = document.getElementById('payment-amount');
-    const mileageHistoryEl = document.getElementById('mileage-history');
-    const mpgInput = document.getElementById('mpg');
-    const gasCostInput = document.getElementById('gas-cost');
-    const maintenanceFeeInput = document.getElementById('maintenance-fee');
-    const convenienceFeeInput = document.getElementById('convenience-fee');
-    const effectiveRateEl = document.getElementById('effective-rate');
-    const mileageSettingsForm = document.getElementById('mileage-settings-form');
-    const whiteboardForm = document.getElementById('whiteboard-form');
-    const whiteboardMessageEl = document.getElementById('whiteboard-message');
-    const whiteboardListEl = document.getElementById('whiteboard-list');
-    const choreForm = document.getElementById('chore-form');
-    const choreDescriptionEl = document.getElementById('chore-description');
-    const choreDurationEl = document.getElementById('chore-duration');
-    const oneTimeChoreListEl = document.getElementById('one-time-chore-list');
-    const recurringChoreListEl = document.getElementById('recurring-chore-list');
-    const completedChoreListEl = document.getElementById('completed-chore-list');
-    const shoppingItemForm = document.getElementById('shopping-item-form');
-    const shoppingItemDescriptionEl = document.getElementById('shopping-item-description');
-    const shoppingItemTypeEl = document.getElementById('shopping-item-type');
-    const shoppingListEl = document.getElementById('shopping-list');
-    const wishlistEl = document.getElementById('wishlist');
-    const recentlyPurchasedListEl = document.getElementById('recently-purchased-list');
     const resetButton = document.getElementById('reset-button');
     const exportButton = document.getElementById('export-button');
     const importButton = document.getElementById('import-button');
     const importFileEl = document.getElementById('import-file');
     const loadTestDataButton = document.getElementById('load-test-data-button');
 
-    // --- IOU DOM Elements ---
-    const iouSummaryTextEl = document.getElementById('iou-summary-text');
-    const iouForm = document.getElementById('iou-form');
-    const iouPayerEl = document.getElementById('iou-payer');
-    const iouOwerEl = document.getElementById('iou-ower');
-    const iouAmountEl = document.getElementById('iou-amount');
-    const iouDescriptionEl = document.getElementById('iou-description');
-    const billSplitForm = document.getElementById('bill-split-form');
-    const billDescriptionEl = document.getElementById('bill-description');
-    const billTotalAmountEl = document.getElementById('bill-total-amount');
-    const billPayerEl = document.getElementById('bill-payer');
-    const billSplitTypeEl = document.getElementById('bill-split-type');
-    const billSplitDetailsEl = document.getElementById('bill-split-details');
-    const iouHistoryEl = document.getElementById('iou-history');
+    // Whiteboard
+    const whiteboardForm = document.getElementById('whiteboard-form');
+    const whiteboardMessageEl = document.getElementById('whiteboard-message');
+    const whiteboardListEl = document.getElementById('whiteboard-list');
 
-    // --- Consolidated Task Form Elements ---
+    // Consolidated Task Form
     const taskForm = document.getElementById('task-form');
     const taskDescriptionEl = document.getElementById('task-description');
     const taskTypeEl = document.getElementById('task-type');
     const choreOptionsEl = document.getElementById('chore-options');
     const choreDurationEl = document.getElementById('chore-duration');
 
-    // --- Consolidated Finance Form Elements ---
+    // Consolidated Finance Form
     const transactionForm = document.getElementById('transaction-form');
     const transactionTypeEl = document.getElementById('transaction-type');
     const transactionDetailsEl = document.getElementById('transaction-details');
 
-    // --- Settings DOM Elements ---
-    const roommate1NameInput = document.getElementById('roommate1-name');
-    const roommate2NameInput = document.getElementById('roommate2-name');
+    // Settings
     const themeToggleSettings = document.getElementById('theme-toggle-settings');
     const expenseCategoryListEl = document.getElementById('expense-category-list');
     const addCategoryForm = document.getElementById('add-category-form');
     const newCategoryNameInput = document.getElementById('new-category-name');
+    const mileageSettingsForm = document.getElementById('mileage-settings-form');
+    const mpgInput = document.getElementById('mpg');
+    const gasCostInput = document.getElementById('gas-cost');
+    const maintenanceFeeInput = document.getElementById('maintenance-fee');
+    const convenienceFeeInput = document.getElementById('convenience-fee');
+    const effectiveRateEl = document.getElementById('effective-rate');
 
     // --- Chart instances ---
     let contributionChart = null;
@@ -385,22 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return (s.gasCost / s.mpg) + s.maintenance + s.convenience;
     }
 
-    function calculateMonthlyAverage(person) {
-        const contributionsByMonth = {};
-        state.fundHistory.forEach(item => {
-            if (item.type === 'contribution' && item.person === person) {
-                const date = new Date(item.date);
-                const monthYear = `${date.getFullYear()}-${date.getMonth()}`;
-                if (!contributionsByMonth[monthYear]) { contributionsByMonth[monthYear] = 0; }
-                contributionsByMonth[monthYear] += item.amount;
-            }
-        });
-        const monthlyTotals = Object.values(contributionsByMonth);
-        if (monthlyTotals.length === 0) return 0;
-        const totalContribution = monthlyTotals.reduce((sum, total) => sum + total, 0);
-        return totalContribution / monthlyTotals.length;
-    }
-
     // --- Rendering ---
     function render() {
         // Update UI elements that depend on roommate names first
@@ -427,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Render Dropdowns
-        populateDropdown(expenseCategoryEl, state.expenseCategories);
+        // populateDropdown(expenseCategoryEl, state.expenseCategories); // This is now handled dynamically
 
         renderFinance();
         renderOverview();
@@ -450,8 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-        const upcomingChores = state.chores
-            .filter(c => !c.isOneTime)
+        const upcomingChores = state.tasks
+            .filter(t => t.type === 'chore' && t.status === 'todo' && !t.isOneTime)
             .map(c => {
                 const lastCompleted = c.lastCompletedDate ? new Date(c.lastCompletedDate) : new Date(c.creationDate);
                 const dueDate = new Date(lastCompleted.getTime() + c.durationDays * 86400000);
@@ -469,57 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             upcomingChoresListEl.innerHTML = '<li>No chores due in the next 3 days.</li>';
-        }
-
-        // --- Fund Balance Chart ---
-        if (fundBalanceChart) {
-            fundBalanceChart.destroy();
-        }
-        const fundBalanceCtx = document.getElementById('fund-balance-chart').getContext('2d');
-        const fundTransactions = state.transactions
-            .filter(t => t.type === 'contribution' || t.type === 'expense')
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        let runningBalance = 0;
-        const chartData = fundTransactions.map(item => {
-            if (item.type === 'contribution') {
-                runningBalance += item.amount;
-            } else { // expense
-                runningBalance -= item.amount;
-            }
-            return {
-                x: new Date(item.date),
-                y: runningBalance
-            };
-        });
-
-        const isDarkMode = document.body.classList.contains('dark-mode');
-        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-        const textColor = isDarkMode ? '#ecf0f1' : '#333';
-
-        if (chartData.length > 0) {
-            fundBalanceChart = new Chart(fundBalanceCtx, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'Fund Balance',
-                        data: chartData,
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { type: 'time', time: { unit: 'day' }, ticks: { color: textColor }, grid: { color: gridColor } },
-                        y: { beginAtZero: false, ticks: { color: textColor }, grid: { color: gridColor } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
         }
 
         // --- Activity Log ---
@@ -1309,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function deleteExpenseCategory(category) {
-        if (state.fundHistory.some(item => item.category === category)) {
+        if (state.transactions.some(item => item.type === 'expense' && item.category === category)) {
             alert(`Cannot delete category "${category}" as it is used in the fund history.`);
             return;
         }
