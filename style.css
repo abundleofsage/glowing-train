@@ -129,52 +129,40 @@ h2 {
 }
 
 .container {
+    padding: 20px; /* Add some padding around the container */
     display: flex;
-    gap: 0; /* Remove gap as items are full-width */
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
     width: 100%;
-    overflow-x: scroll;
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    /* Hide scrollbar for a cleaner look */
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    height: calc(100vh - 70px); /* Adjust based on header height */
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .container::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, and Opera */
+    width: 8px;
+}
+.container::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
 }
 
 .card {
+    max-width: 1200px; /* Set a max-width for larger screens */
+    margin: 0; /* Centering is handled by the flex container's `align-items` */
+    border-radius: 15px; /* More rounded corners */
     background-color: var(--card-bg-color);
-    border-radius: 8px;
     box-shadow: var(--card-shadow);
     padding: 20px;
-    flex: 0 0 100%; /* Don't grow, don't shrink, take 100% width */
     width: 100%;
-    scroll-snap-align: start;
+    box-sizing: border-box;
     transition: background-color 0.3s;
-    box-sizing: border-box; /* Include padding in the width calculation */
-    height: 90vh;
-    overflow-y: auto;
+    flex-shrink: 0; /* Prevent cards from shrinking */
 }
 
 .nav-arrow {
-    position: fixed;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 50px;
-    height: 50px;
-    background-color: rgba(0, 0, 0, 0.3);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    cursor: pointer;
-    z-index: 1000;
-    user-select: none; /* Prevents text selection on double-click */
-    transition: background-color 0.3s;
+    display: none;
 }
 
 .nav-arrow:hover {

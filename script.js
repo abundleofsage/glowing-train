@@ -444,9 +444,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const defaultColors = ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#e67e22'];
         const roommateIndex = state.roommates.indexOf(person);
 
-        if (lowerCasePerson === 'sage') return '#3498db';
-        if (lowerCasePerson === 'emily') return '#e74c3c';
-        if (lowerCasePerson === 'susan') return '#9b59b6';
+        if (lowerCasePerson === 'sage') return '#9b59b6'; // Purple
+        if (lowerCasePerson === 'emily') return '#3498db'; // Blue
+        if (lowerCasePerson === 'susan') return '#2ecc71'; // Green
 
         if (roommateIndex !== -1) {
             return defaultColors[roommateIndex % defaultColors.length];
@@ -1320,36 +1320,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Card Navigation ---
-    const container = document.querySelector('.container');
     const cards = document.querySelectorAll('.card');
-    const navLeft = document.getElementById('nav-left');
-    const navRight = document.getElementById('nav-right');
     const navButtons = document.querySelectorAll('.nav-button');
-    let currentCardIndex = 0;
+    let currentCardIndex = 0; // Keep track of the active card
 
-    function updateNavigation() {
-        navLeft.style.display = currentCardIndex === 0 ? 'none' : 'flex';
-        navRight.style.display = currentCardIndex === cards.length - 1 ? 'none' : 'flex';
-        navButtons.forEach((btn, i) => btn.classList.toggle('active', i === currentCardIndex));
-    }
     function scrollToCard(index, smooth = true) {
-        currentCardIndex = index;
-        container.scrollTo({ left: container.offsetWidth * index, behavior: smooth ? 'smooth' : 'instant' });
-        updateNavigation();
+        if (cards[index]) {
+            // Update active button state
+            currentCardIndex = index;
+            navButtons.forEach((btn, i) => btn.classList.toggle('active', i === currentCardIndex));
+
+            // Scroll to the card
+            cards[index].scrollIntoView({
+                behavior: smooth ? 'smooth' : 'instant',
+                block: 'start'
+            });
+        }
     }
-    navButtons.forEach((btn, i) => btn.addEventListener('click', () => scrollToCard(i)));
-    navLeft.addEventListener('click', () => { if (currentCardIndex > 0) scrollToCard(currentCardIndex - 1); });
-    navRight.addEventListener('click', () => { if (currentCardIndex < cards.length - 1) scrollToCard(currentCardIndex + 1); });
-    let scrollTimeout;
-    container.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            const newIndex = Math.round(container.scrollLeft / container.offsetWidth);
-            if (newIndex !== currentCardIndex) {
-                currentCardIndex = newIndex;
-                updateNavigation();
-            }
-        }, 150);
+
+    navButtons.forEach((btn) => {
+        const index = parseInt(btn.dataset.index, 10);
+        btn.addEventListener('click', () => scrollToCard(index));
     });
 
     // --- Initial Load ---
@@ -1357,5 +1348,9 @@ document.addEventListener('DOMContentLoaded', () => {
     recalculateTotals(); // Initial calculation on load
     loadTheme();
     render();
-    updateNavigation();
+    // Set the first nav button as active by default
+    if (navButtons[0]) {
+        navButtons[0].classList.add('active');
+    }
+    handleTaskTypeChange(); // Set initial visibility for task type options
 });
