@@ -87,11 +87,19 @@
             <h2>Finance</h2>
 
             <!-- Financial Summary Section -->
-            <div class="fund-analytics">
-                <h3>Summary</h3>
-                <p>Shared Fund Balance: <span id="finance-fund-balance">$0.00</span></p>
-                <div id="finance-iou-summary">
-                    <!-- Detailed IOU summary will be rendered here by JS -->
+            <div class="fund-analytics" style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <div class="summary-box" style="flex: 1; min-width: 250px;">
+                    <h3>Summary</h3>
+                    <p>Shared Fund Balance: <span id="finance-fund-balance">$0.00</span></p>
+                    <div id="finance-iou-summary">
+                        <!-- Detailed IOU summary will be rendered here by JS -->
+                    </div>
+                </div>
+                <div class="pie-chart-box" style="flex: 1; min-width: 250px;">
+                    <h3>Contributions</h3>
+                    <div id="contribution-pie-chart-container">
+                        <!-- Pie chart will be rendered here -->
+                    </div>
                 </div>
             </div>
 

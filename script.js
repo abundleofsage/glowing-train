@@ -439,6 +439,73 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${diffWeeks}w ago`;
     }
 
+    function getPersonColor(person) {
+        const lowerCasePerson = person.toLowerCase();
+        const defaultColors = ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#e67e22'];
+        const roommateIndex = state.roommates.indexOf(person);
+
+        if (lowerCasePerson === 'sage') return '#3498db';
+        if (lowerCasePerson === 'emily') return '#e74c3c';
+        if (lowerCasePerson === 'susan') return '#9b59b6';
+
+        if (roommateIndex !== -1) {
+            return defaultColors[roommateIndex % defaultColors.length];
+        }
+
+        // Fallback for names not in the default list
+        let hash = 0;
+        for (let i = 0; i < person.length; i++) {
+            hash = person.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        let color = '#';
+        for (let i = 0; i < 3; i++) {
+            const value = (hash >> (i * 8)) & 0xFF;
+            color += ('00' + value.toString(16)).substr(-2);
+        }
+        return color;
+    }
+
+    function renderPieChart() {
+        const container = document.getElementById('contribution-pie-chart-container');
+        if (!container) return;
+
+        const contributions = state.contributions;
+        const total = Object.values(contributions).reduce((sum, amount) => sum + amount, 0);
+
+        if (total === 0) {
+            container.innerHTML = '<p>No contributions yet.</p>';
+            return;
+        }
+
+        let gradientString = [];
+        let legendHTML = '<div class="pie-legend">';
+        let currentDegree = 0;
+
+        Object.entries(contributions).forEach(([person, amount]) => {
+            if (amount <= 0) return;
+
+            const percentage = (amount / total) * 100;
+            const degree = (percentage / 100) * 360;
+            const color = getPersonColor(person);
+
+            gradientString.push(`${color} ${currentDegree}deg ${currentDegree + degree}deg`);
+            legendHTML += `
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: ${color};"></span>
+                    <span class="legend-label">${person}: ${percentage.toFixed(1)}%</span>
+                </div>`;
+
+            currentDegree += degree;
+        });
+
+        const pieHTML = `
+            <div class="pie-chart" style="background: conic-gradient(${gradientString.join(', ')});"></div>
+        `;
+
+        legendHTML += '</div>';
+        container.innerHTML = pieHTML + legendHTML;
+    }
+
     function renderWhiteboardMessage(message, level) {
         const date = new Date(message.date);
         const personClass = getPersonClass(message.person);
@@ -482,6 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderFinance() {
+        renderPieChart();
         // 1. Render Summary
         const fundBalanceEl = document.getElementById('finance-fund-balance');
         const iouSummaryEl = document.getElementById('finance-iou-summary');
@@ -674,9 +742,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Render Chores
         chores.forEach(task => {
-            // Simplified chore rendering for now. Can be expanded.
+            let statusText = '';
+            if (!task.isOneTime && task.durationDays) {
+                const now = new Date();
+                const lastCompleted = task.lastCompletedDate ? new Date(task.lastCompletedDate) : new Date(task.creationDate);
+                const dueDate = new Date(lastCompleted.getTime() + task.durationDays * 86400000);
+                const diffTime = dueDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 1) {
+                    statusText = ` (due in ${diffDays} days)`;
+                } else if (diffDays === 1) {
+                    statusText = ` (due tomorrow)`;
+                } else if (diffDays === 0) {
+                    statusText = ` (due today)`;
+                } else {
+                    statusText = ` <span style="color: red;">(Overdue by ${-diffDays} day${-diffDays > 1 ? 's' : ''})</span>`;
+                }
+            }
             const completeButtons = state.roommates.map(p => `<button class="task-btn complete-chore" data-id="${task.id}" data-person="${p}">${p} did it</button>`).join('');
-            todoChoreListEl.innerHTML += `<li class="chore-item"><span>${task.description}</span><div>${completeButtons}</div></li>`;
+            todoChoreListEl.innerHTML += `<li class="chore-item"><span>${task.description}${statusText}</span><div>${completeButtons}</div></li>`;
         });
 
         // Render Shopping List
@@ -834,6 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             state.transactions.push(newTxn);
             logActivity(logMessage, (type === 'expense' ? -newTxn.amount : newTxn.amount));
+            recalculateTotals(); // Recalculate totals after adding a transaction
             transactionForm.reset(); // This will reset the select dropdown and clear the inputs
             renderTransactionDetails(); // Re-render the fields for the (now reset) dropdown
             saveData();
@@ -1268,6 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Load ---
     loadData();
+    recalculateTotals(); // Initial calculation on load
     loadTheme();
     render();
     updateNavigation();
