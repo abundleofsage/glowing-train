@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     // General
-    const themeToggle = document.getElementById('theme-toggle');
     const resetButton = document.getElementById('reset-button');
     const exportButton = document.getElementById('export-button');
     const importButton = document.getElementById('import-button');
@@ -1125,7 +1124,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function switchTheme(isDark) {
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
         document.body.classList.toggle('dark-mode', isDark);
-        themeToggle.checked = isDark;
         themeToggleSettings.checked = isDark;
     }
     function loadTheme() { switchTheme(localStorage.getItem('theme') === 'dark'); }
@@ -1232,7 +1230,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateRoommateName(index, newName);
         }
     });
-    themeToggle.addEventListener('change', (e) => switchTheme(e.target.checked));
     themeToggleSettings.addEventListener('change', (e) => switchTheme(e.target.checked));
 
 
