@@ -562,7 +562,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!historyEl) return;
         historyEl.innerHTML = '';
 
-        const effectiveRate = calculateEffectiveRate();
         state.transactions.slice().reverse().forEach(txn => {
             const li = document.createElement('li');
             const date = new Date(txn.date).toLocaleString();
