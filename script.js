@@ -116,7 +116,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadData() {
         const savedState = localStorage.getItem('expenseTrackerState');
-        let loadedState = savedState ? JSON.parse(savedState) : {};
+        let loadedState;
+
+        if (savedState) {
+            loadedState = JSON.parse(savedState);
+        } else if (typeof generateRandomData === 'function') {
+            console.log("No saved state, generating random data for testing.");
+            loadedState = generateRandomData();
+        } else {
+            loadedState = {};
+        }
 
         // Merge loaded state with defaults to ensure all keys are present
         state = { ...defaultState, ...loadedState };
@@ -775,8 +784,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     statusText = ` <span style="color: red;">(Overdue by ${-diffDays} day${-diffDays > 1 ? 's' : ''})</span>`;
                 }
             }
+
+            let historyHtml = '';
+            if (task.completionHistory && task.completionHistory.length > 0) {
+                historyHtml = '<ul class="chore-history">';
+                task.completionHistory.forEach(comp => {
+                    historyHtml += `<li>completed ${getMessageAge(comp.date)} by ${comp.person}</li>`;
+                });
+                historyHtml += '</ul>';
+            }
+
             const completeButtons = state.roommates.map(p => `<button class="task-btn complete-chore" data-id="${task.id}" data-person="${p}">${p} did it</button>`).join('');
-            todoChoreListEl.innerHTML += `<li class="chore-item"><span>${task.description}${statusText}</span><div>${completeButtons}</div></li>`;
+            todoChoreListEl.innerHTML += `<li class="chore-item">
+                <div class="chore-info">
+                    <span class="chore-description">${task.description}${statusText}</span>
+                    ${historyHtml}
+                </div>
+                <div class="chore-actions">${completeButtons}</div>
+            </li>`;
         });
 
         // Render Shopping List
@@ -1092,6 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             newTask.durationDays = durationDays;
             newTask.lastCompletedBy = null;
             newTask.lastCompletedDate = null;
+            newTask.completionHistory = [];
         } else { // shopping or wish
             newTask.addedBy = state.roommates[0]; // Default to first roommate for now
             newTask.claimedBy = null;
@@ -1111,14 +1137,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         switch (action) {
             case 'complete':
-                task.status = 'completed';
+                const newCompletionDate = new Date().toISOString();
                 task.lastCompletedBy = person;
-                task.completionDate = new Date().toISOString();
                 logActivity(`${person} completed chore: ${task.description}`);
-                if (!task.isOneTime) {
+
+                // Add to completion history
+                if (!task.completionHistory) {
+                    task.completionHistory = [];
+                }
+                task.completionHistory.unshift({ person: person, date: newCompletionDate });
+                if (task.completionHistory.length > 5) {
+                    task.completionHistory.pop();
+                }
+
+                if (task.isOneTime) {
+                    task.status = 'completed';
+                    task.completionDate = newCompletionDate;
+                } else {
                     // For recurring chores, we don't move them, just update date
                     task.status = 'todo';
-                    task.lastCompletedDate = new Date().toISOString();
+                    task.lastCompletedDate = newCompletionDate;
                 }
                 break;
             case 'claim':

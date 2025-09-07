@@ -111,7 +111,7 @@ function generateRandomData() {
     ];
     choreDescs.forEach(c => {
         const creationDate = randomDate();
-        state.tasks.push({
+        const chore = {
             id: `task_${creationDate.getTime()}_${randInt(1000,9999)}`,
             type: 'chore',
             description: c.desc,
@@ -121,7 +121,32 @@ function generateRandomData() {
             creationDate: creationDate.toISOString(),
             lastCompletedBy: null,
             lastCompletedDate: null,
-        });
+            completionHistory: [], // New field for completion history
+        };
+
+        if (c.recurring) {
+            const numCompletions = randInt(1, 5);
+            let lastCompletionDate = new Date(now.getTime() - randInt(0, c.days * 24 * 60 * 60 * 1000));
+
+            for (let i = 0; i < numCompletions; i++) {
+                const person = randomPerson();
+                const completionDate = new Date(lastCompletionDate);
+
+                chore.completionHistory.unshift({ person: person, date: completionDate.toISOString() });
+
+                // Update chore's primary lastCompleted fields for the most recent one
+                if (i === 0) {
+                    chore.lastCompletedBy = person;
+                    chore.lastCompletedDate = completionDate.toISOString();
+                }
+
+                // Set up the next completion date to be earlier
+                const nextDate = new Date(lastCompletionDate);
+                nextDate.setDate(nextDate.getDate() - c.days - randInt(0,2));
+                lastCompletionDate = nextDate;
+            }
+        }
+        state.tasks.push(chore);
     });
 
     const shoppingItems = ["Milk", "Bread", "Eggs", "Coffee"];
