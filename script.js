@@ -60,6 +60,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const billSplitDetailsEl = document.getElementById('bill-split-details');
     const iouHistoryEl = document.getElementById('iou-history');
 
+    // --- Consolidated Task Form Elements ---
+    const taskForm = document.getElementById('task-form');
+    const taskDescriptionEl = document.getElementById('task-description');
+    const taskTypeEl = document.getElementById('task-type');
+    const choreOptionsEl = document.getElementById('chore-options');
+    const choreDurationEl = document.getElementById('chore-duration');
+
+    // --- Consolidated Finance Form Elements ---
+    const transactionForm = document.getElementById('transaction-form');
+    const transactionTypeEl = document.getElementById('transaction-type');
+    const transactionDetailsEl = document.getElementById('transaction-details');
+
     // --- Settings DOM Elements ---
     const roommate1NameInput = document.getElementById('roommate1-name');
     const roommate2NameInput = document.getElementById('roommate2-name');
@@ -78,17 +90,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const defaultState = {
         fundBalance: 0,
         contributions: {},
-        fundHistory: [],
         mileageTotal: 0,
         mileageSettings: { mpg: 25, gasCost: 3.75, maintenance: 0.05, convenience: 0.05 },
-        mileageHistory: [],
         whiteboard: [],
-        chores: [],
-        completedChores: [],
-        shoppingList: [],
-        wishlist: [],
-        recentlyPurchased: [],
-        ious: [],
+        tasks: [], // Unified tasks: chores, shopping, wishes
+        transactions: [], // Unified transactions
         activityLog: [],
         roommates: ['Sage', 'Emily', 'Susan'],
         expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'],
@@ -158,6 +164,184 @@ document.addEventListener('DOMContentLoaded', () => {
         // Merge loaded state with defaults to ensure all keys are present
         state = { ...defaultState, ...loadedState };
 
+        // <<<< DATA MIGRATION from old structure to new unified transaction structure >>>>
+        if (loadedState.fundHistory || loadedState.mileageHistory || loadedState.ious) {
+            console.log("Old data structures found. Migrating to unified transactions model...");
+            const newTransactions = state.transactions || [];
+
+            // Migrate Fund History
+            if (loadedState.fundHistory) {
+                loadedState.fundHistory.forEach(item => {
+                    if (item.type === 'contribution') {
+                        newTransactions.push({
+                            id: `txn_${new Date(item.date).getTime()}_${Math.random()}`,
+                            type: 'contribution',
+                            person: item.person,
+                            amount: item.amount,
+                            date: item.date
+                        });
+                    } else if (item.type === 'expense') {
+                        newTransactions.push({
+                            id: `txn_${new Date(item.date).getTime()}_${Math.random()}`,
+                            type: 'expense',
+                            description: item.description,
+                            category: item.category,
+                            amount: Math.abs(item.amount), // Expenses are stored as positive values
+                            date: item.date
+                        });
+                    }
+                });
+            }
+
+            // Migrate Mileage History
+            if (loadedState.mileageHistory) {
+                 // Assuming rides from Sage are for Emily, and payments are from Emily to Sage.
+                 // This is based on test data and typical roommate setups.
+                const mileageProvider = 'Sage';
+                const mileageRecipient = 'Emily';
+                loadedState.mileageHistory.forEach(item => {
+                    if (item.type === 'trip') {
+                        newTransactions.push({
+                            id: `txn_${new Date(item.date).getTime()}_${Math.random()}`,
+                            type: 'mileage',
+                            payer: mileageProvider,
+                            ower: mileageRecipient,
+                            description: item.description,
+                            miles: item.miles,
+                            // Cost will be calculated dynamically, but we can store the original for posterity
+                            originalCost: item.cost,
+                            date: item.date
+                        });
+                    } else if (item.type === 'payment') {
+                        newTransactions.push({
+                            id: `txn_${new Date(item.date).getTime()}_${Math.random()}`,
+                            type: 'iou', // A mileage payment is just an IOU settlement
+                            payer: mileageRecipient,
+                            ower: mileageProvider,
+                            amount: item.amount,
+                            description: 'Mileage Payment',
+                            date: item.date
+                        });
+                    }
+                });
+            }
+
+            // Migrate IOUs
+            if (loadedState.ious) {
+                loadedState.ious.forEach(item => {
+                    newTransactions.push({
+                        id: item.id || `txn_${new Date(item.date).getTime()}_${Math.random()}`,
+                        type: 'iou',
+                        payer: item.payer,
+                        ower: item.ower,
+                        amount: item.amount,
+                        description: item.description,
+                        date: item.date
+                    });
+                });
+            }
+
+            // Sort all transactions by date
+            newTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+            state.transactions = newTransactions;
+
+            // Clean up old state properties
+            delete state.fundHistory;
+            delete state.mileageHistory;
+            delete state.ious;
+            console.log("Migration complete.");
+        }
+
+        // <<<< DATA MIGRATION from old task structure to new unified task structure >>>>
+        if (loadedState.chores || loadedState.shoppingList || loadedState.wishlist) {
+            console.log("Old task data structures found. Migrating to unified tasks model...");
+            const newTasks = state.tasks || [];
+
+            // Migrate chores
+            if (loadedState.chores) {
+                loadedState.chores.forEach(c => {
+                    newTasks.push({
+                        id: c.id,
+                        type: 'chore',
+                        description: c.description,
+                        isOneTime: c.isOneTime,
+                        durationDays: c.durationDays,
+                        creationDate: c.creationDate,
+                        lastCompletedBy: c.lastCompletedBy,
+                        lastCompletedDate: c.lastCompletedDate,
+                        status: 'todo' // All active chores are 'todo'
+                    });
+                });
+            }
+            if (loadedState.completedChores) {
+                loadedState.completedChores.forEach(c => {
+                    newTasks.push({
+                        id: c.id,
+                        type: 'chore',
+                        description: c.description,
+                        isOneTime: c.isOneTime,
+                        durationDays: c.durationDays,
+                        creationDate: c.creationDate,
+                        lastCompletedBy: c.lastCompletedBy,
+                        lastCompletedDate: c.lastCompletedDate,
+                        completionDate: c.completionDate,
+                        status: 'completed'
+                    });
+                });
+            }
+
+            // Migrate shopping lists
+            if (loadedState.shoppingList) {
+                loadedState.shoppingList.forEach(s => {
+                    newTasks.push({
+                        id: s.id,
+                        type: 'shopping',
+                        description: s.description,
+                        addedBy: s.addedBy,
+                        date: s.date,
+                        claimedBy: s.claimedBy,
+                        status: 'todo'
+                    });
+                });
+            }
+            if (loadedState.wishlist) {
+                loadedState.wishlist.forEach(w => {
+                    newTasks.push({
+                        id: w.id,
+                        type: 'wish',
+                        description: w.description,
+                        addedBy: w.addedBy,
+                        date: w.date,
+                        claimedBy: w.claimedBy,
+                        status: 'todo'
+                    });
+                });
+            }
+            if (loadedState.recentlyPurchased) {
+                loadedState.recentlyPurchased.forEach(p => {
+                    newTasks.push({
+                        id: p.id,
+                        type: 'shopping', // Assume purchased items were from shopping list
+                        description: p.description,
+                        addedBy: p.addedBy,
+                        date: p.date,
+                        purchasedBy: p.purchasedBy,
+                        purchaseDate: p.purchaseDate,
+                        status: 'purchased'
+                    });
+                });
+            }
+
+            state.tasks = newTasks;
+            delete state.chores;
+            delete state.completedChores;
+            delete state.shoppingList;
+            delete state.wishlist;
+            delete state.recentlyPurchased;
+            console.log("Task migration complete.");
+        }
+
+
         // Initialize contributions object if it's missing or doesn't match roommates
         const currentContribKeys = Object.keys(state.contributions);
         if (state.roommates.length !== currentContribKeys.length || !state.roommates.every(r => currentContribKeys.includes(r))) {
@@ -188,11 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
         migrateMessages(state.whiteboard);
-
-
-        if (!Array.isArray(state.ious)) {
-            state.ious = [];
-        }
 
         purgeOldCompletedChores();
         purgeOldRecentlyPurchased();
@@ -241,76 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
 
-        // Render Fund
-        fundBalanceEl.textContent = `$${state.fundBalance.toFixed(2)}`;
-        fundHistoryEl.innerHTML = '';
-        state.fundHistory.slice().reverse().forEach((item, index) => {
-            const li = document.createElement('li');
-            const originalIndex = state.fundHistory.length - 1 - index;
-            const date = new Date(item.date).toLocaleString();
-            let content;
-
-            if (item.type === 'contribution') {
-                const personClass = getPersonClass(item.person);
-                content = `<div><span class="person-name ${personClass}">${item.person}</span> contributed <span style="color: green;">+$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
-            } else {
-                const categoryLabel = item.category ? ` <span class="category-chip">${item.category}</span>` : '';
-                content = `<div>${item.description}${categoryLabel} <span style="color: red;">-$${Math.abs(item.amount).toFixed(2)}</span></div><small>${date}</small>`;
-            }
-            li.innerHTML = `<div>${content}</div><button class="delete-btn" data-type="fund" data-index="${originalIndex}">&times;</button>`;
-            fundHistoryEl.appendChild(li);
-        });
-
-        // Render Analytics
-        const contributionStatsEl = document.getElementById('contribution-stats-container');
-        contributionStatsEl.innerHTML = '';
-        const totalContributions = Object.values(state.contributions).reduce((sum, val) => sum + val, 0);
-        const averageContribution = totalContributions / state.roommates.length;
-
-        state.roommates.forEach(person => {
-            const pTotal = state.contributions[person] || 0;
-            const pAvg = calculateMonthlyAverage(person);
-            const pEl = document.createElement('p');
-            pEl.innerHTML = `<b>${person}:</b> <span class="${getPersonClass(person)}">$${pTotal.toFixed(2)}</span> total ($${pAvg.toFixed(2)}/mo avg)`;
-            contributionStatsEl.appendChild(pEl);
-        });
-
-        if (state.roommates.length > 1) {
-            const balanceMessages = [];
-            state.roommates.forEach(person => {
-                const balance = (state.contributions[person] || 0) - averageContribution;
-                if (balance < -1) {
-                    balanceMessages.push(`<span class="person-name ${getPersonClass(person)}">${person}</span> owes <b>$${Math.abs(balance).toFixed(2)}</b>`);
-                }
-            });
-            if (balanceMessages.length > 0) {
-                equalizerTextEl.innerHTML = balanceMessages.join(', ') + ' to the pot.';
-            } else {
-                equalizerTextEl.textContent = 'Contributions are balanced.';
-            }
-        } else {
-            equalizerTextEl.textContent = 'Add more roommates to track balance.';
-        }
-
-
-        // Render Mileage
-        mileageTotalEl.textContent = `$${state.mileageTotal.toFixed(2)}`;
-        effectiveRateEl.textContent = calculateEffectiveRate().toFixed(2);
-        mileageHistoryEl.innerHTML = '';
-        state.mileageHistory.slice().reverse().forEach((item, index) => {
-            const li = document.createElement('li');
-            const originalIndex = state.mileageHistory.length - 1 - index;
-            const date = new Date(item.date).toLocaleString();
-            let content;
-            if (item.type === 'payment') {
-                content = `<div>Payment Received <span style="color: green;">-$${item.amount.toFixed(2)}</span></div><small>${date}</small>`;
-            } else {
-                content = `<div>${item.description} (${item.miles} miles) <span>$${item.cost.toFixed(2)}</span></div><small>${date}</small>`;
-            }
-            li.innerHTML = `<div>${content}</div><button class="delete-btn" data-type="mileage" data-index="${originalIndex}">&times;</button>`;
-            mileageHistoryEl.appendChild(li);
-        });
-
         // Render Whiteboard
         whiteboardListEl.innerHTML = '';
         state.whiteboard.forEach(message => {
@@ -318,15 +427,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Render Dropdowns
-        populateDropdown(contributionPersonEl, state.roommates);
         populateDropdown(expenseCategoryEl, state.expenseCategories);
 
-        renderIOU();
+        renderFinance();
         renderOverview();
         renderCharts();
-        renderChores();
-        renderShoppingList();
+        renderTasks();
         renderSettings();
+        if(transactionTypeEl) renderTransactionDetails(); // Render the dynamic form
     }
 
     function renderOverview() {
@@ -334,8 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const financialSummaryEl = document.getElementById('financial-summary-content');
         let summaryHTML = `<p><b>Shared Fund Balance:</b> <span style="color: ${state.fundBalance >= 0 ? 'green' : 'red'};">$${state.fundBalance.toFixed(2)}</span></p>`;
         summaryHTML += `<p><b>Mileage Owed:</b> $${state.mileageTotal.toFixed(2)}</p>`;
-        const iouSummary = iouSummaryTextEl.innerHTML; // Grab the already calculated summary
-        summaryHTML += `<p><b>IOUs:</b> ${iouSummary}</p>`;
         financialSummaryEl.innerHTML = summaryHTML;
 
         // --- Upcoming Chores ---
@@ -370,10 +476,17 @@ document.addEventListener('DOMContentLoaded', () => {
             fundBalanceChart.destroy();
         }
         const fundBalanceCtx = document.getElementById('fund-balance-chart').getContext('2d');
-        const fundHistory = [...state.fundHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const fundTransactions = state.transactions
+            .filter(t => t.type === 'contribution' || t.type === 'expense')
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
         let runningBalance = 0;
-        const chartData = fundHistory.map(item => {
-            runningBalance += item.amount;
+        const chartData = fundTransactions.map(item => {
+            if (item.type === 'contribution') {
+                runningBalance += item.amount;
+            } else { // expense
+                runningBalance -= item.amount;
+            }
             return {
                 x: new Date(item.date),
                 y: runningBalance
@@ -486,13 +599,17 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    function renderIOU() {
-        // Render IOU dropdowns
-        populateDropdown(iouPayerEl, state.roommates);
-        populateDropdown(iouOwerEl, state.roommates);
-        populateDropdown(billPayerEl, state.roommates, true);
+    function renderFinance() {
+        // 1. Render Summary
+        const fundBalanceEl = document.getElementById('finance-fund-balance');
+        const iouSummaryEl = document.getElementById('finance-iou-summary');
 
-        // Calculate IOU summary
+        if (fundBalanceEl) {
+            fundBalanceEl.textContent = `$${state.fundBalance.toFixed(2)}`;
+            fundBalanceEl.style.color = state.fundBalance >= 0 ? 'green' : 'red';
+        }
+
+        // 2. Calculate and Render IOU Summary
         const debts = {};
         state.roommates.forEach(p1 => {
             debts[p1] = {};
@@ -501,9 +618,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        state.ious.forEach(iou => {
-            if (debts[iou.ower] && debts[iou.ower][iou.payer] !== undefined) {
-                debts[iou.ower][iou.payer] += iou.amount;
+        const effectiveRate = calculateEffectiveRate();
+
+        state.transactions.forEach(txn => {
+            if (txn.type === 'iou') {
+                if (debts[txn.ower] && debts[txn.ower][txn.payer] !== undefined) {
+                    debts[txn.ower][txn.payer] += txn.amount;
+                }
+            } else if (txn.type === 'mileage') {
+                const cost = txn.miles * effectiveRate;
+                if (debts[txn.ower] && debts[txn.ower][txn.payer] !== undefined) {
+                    debts[txn.ower][txn.payer] += cost;
+                }
             }
         });
 
@@ -522,15 +648,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (Math.abs(netDebt) > 0.01) {
                     let ower, payer, amount;
-                    if (netDebt > 0) {
-                        ower = p1;
-                        payer = p2;
-                        amount = netDebt;
-                    } else {
-                        ower = p2;
-                        payer = p1;
-                        amount = -netDebt;
-                    }
+                    if (netDebt > 0) { ower = p1; payer = p2; amount = netDebt; }
+                    else { ower = p2; payer = p1; amount = -netDebt; }
                     const owerClass = getPersonClass(ower);
                     const payerClass = getPersonClass(payer);
                     summaryMessages.push(`<span class="person-name ${owerClass}">${ower}</span> owes <span class="person-name ${payerClass}">${payer}</span> <b>$${amount.toFixed(2)}</b>`);
@@ -539,39 +658,50 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        if (summaryMessages.length === 0) {
-            iouSummaryTextEl.textContent = 'Everyone is settled up.';
-        } else {
-            iouSummaryTextEl.innerHTML = summaryMessages.join('<br>');
+        if (iouSummaryEl) {
+            if (summaryMessages.length === 0) {
+                iouSummaryEl.textContent = 'Everyone is settled up.';
+            } else {
+                iouSummaryEl.innerHTML = summaryMessages.join('<br>');
+            }
         }
 
 
-        // Render IOU history
-        iouHistoryEl.innerHTML = '';
-        if (state.ious.length === 0) {
-            iouHistoryEl.innerHTML = '<li>No active IOUs.</li>';
-            return;
-        }
+        // 3. Render History
+        const historyEl = document.getElementById('transaction-history');
+        if (!historyEl) return;
+        historyEl.innerHTML = '';
 
-        state.ious.slice().reverse().forEach((iou, index) => {
+        const effectiveRate = calculateEffectiveRate();
+        state.transactions.slice().reverse().forEach(txn => {
             const li = document.createElement('li');
-            const originalIndex = state.ious.length - 1 - index;
-            const date = new Date(iou.date).toLocaleString();
-            const payerClass = getPersonClass(iou.payer);
-            const owerClass = getPersonClass(iou.ower);
+            const date = new Date(txn.date).toLocaleString();
+            let content = '';
+
+            switch (txn.type) {
+                case 'contribution':
+                    content = `<div><span class="person-name ${getPersonClass(txn.person)}">${txn.person}</span> contributed <span style="color: green;">+$${txn.amount.toFixed(2)}</span></div>`;
+                    break;
+                case 'expense':
+                    content = `<div>Expense: ${txn.description} <span class="category-chip">${txn.category}</span> <span style="color: red;">-$${txn.amount.toFixed(2)}</span></div>`;
+                    break;
+                case 'iou':
+                    content = `<div>IOU: <span class="person-name ${getPersonClass(txn.payer)}">${txn.payer}</span> paid <span class="person-name ${getPersonClass(txn.ower)}">${txn.ower}</span> <b>$${txn.amount.toFixed(2)}</b> for "${txn.description}"</div>`;
+                    break;
+                case 'mileage':
+                     const cost = txn.miles * effectiveRate;
+                    content = `<div>Mileage: <span class="person-name ${getPersonClass(txn.payer)}">${txn.payer}</span> drove ${txn.ower} ${txn.miles} miles for "${txn.description}" (<b>$${cost.toFixed(2)}</b>)</div>`;
+                    break;
+            }
 
             li.innerHTML = `
-                <div style="flex-grow: 1;">
-                    <div>
-                        <span class="person-name ${payerClass}">${iou.payer}</span> paid <b>$${iou.amount.toFixed(2)}</b> for <span class="person-name ${owerClass}">${iou.ower}</span>
-                    </div>
-                    <small>${iou.description} - ${date}</small>
-                </div>
-                <button class="delete-btn" data-type="iou" data-index="${originalIndex}">&times;</button>
+                <div>${content}<small>${date}</small></div>
+                <button class="delete-btn" data-type="transaction" data-id="${txn.id}">&times;</button>
             `;
-            iouHistoryEl.appendChild(li);
+            historyEl.appendChild(li);
         });
     }
+
 
     function populateDropdown(selectElement, options, hasPlaceholder = false) {
         const currentValue = selectElement.value;
@@ -639,78 +769,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderChores() {
-        oneTimeChoreListEl.innerHTML = '';
-        recurringChoreListEl.innerHTML = '';
-        completedChoreListEl.innerHTML = '';
-        const now = new Date();
+    function renderTasks() {
+        // Get list elements
+        const todoChoreListEl = document.getElementById('todo-chore-list');
+        const todoShoppingListEl = document.getElementById('todo-shopping-list');
+        const todoWishListEl = document.getElementById('todo-wish-list');
+        const completedTaskListEl = document.getElementById('completed-task-list');
 
-        const oneTimeChores = state.chores.filter(c => c.isOneTime);
-        const recurringChores = state.chores.filter(c => !c.isOneTime);
+        // Make sure elements exist before proceeding
+        if (!todoChoreListEl || !todoShoppingListEl || !todoWishListEl || !completedTaskListEl) return;
 
-        const renderChoreItem = (chore, isRecurring) => {
-            let timerHtml = '';
-            const choreActions = state.roommates.map(p =>
-                `<button class="chore-btn ${getPersonClass(p)}" data-chore-id="${chore.id}" data-person="${p}">${p} did it</button>`
-            ).join('');
+        // Clear lists
+        todoChoreListEl.innerHTML = '';
+        todoShoppingListEl.innerHTML = '';
+        todoWishListEl.innerHTML = '';
+        completedTaskListEl.innerHTML = '';
 
-            if (isRecurring) {
-                const lastCompletedDate = chore.lastCompletedDate ? new Date(chore.lastCompletedDate) : null;
-                const dueDate = lastCompletedDate ? new Date(lastCompletedDate.getTime() + chore.durationDays * 86400000) : null;
-                let timerText = 'New', timerColor = 'blue';
-                if (dueDate) {
-                    const diffTime = dueDate - now;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays > 1) { timerText = `Due in ${diffDays} days`; timerColor = 'green'; }
-                    else if (diffDays === 1) { timerText = 'Due tomorrow'; timerColor = 'orange'; }
-                    else if (diffDays === 0) { timerText = 'Due today'; timerColor = 'red'; }
-                    else { timerText = `Overdue by ${-diffDays} day(s)`; timerColor = 'darkred'; }
-                }
-                const lastCompletedByClass = chore.lastCompletedBy ? getPersonClass(chore.lastCompletedBy) : '';
-                const lastCompletedText = chore.lastCompletedBy ? `Last done by <span class="person-name ${lastCompletedByClass}">${chore.lastCompletedBy}</span> on ${lastCompletedDate.toLocaleDateString()}` : 'Not yet completed';
-                timerHtml = `
-                    <div class="chore-status">
-                        <span class="chore-timer" style="color: ${timerColor};">${timerText}</span>
-                        <div class="chore-actions">${choreActions}</div>
-                    </div>`;
+        // Filter tasks
+        const chores = state.tasks.filter(t => t.type === 'chore' && t.status === 'todo');
+        const shopping = state.tasks.filter(t => t.type === 'shopping' && t.status === 'todo');
+        const wishes = state.tasks.filter(t => t.type === 'wish' && t.status === 'todo');
+        const completed = state.tasks.filter(t => t.status === 'completed' || t.status === 'purchased');
+
+        // Render Chores
+        chores.forEach(task => {
+            // Simplified chore rendering for now. Can be expanded.
+            const completeButtons = state.roommates.map(p => `<button class="task-btn complete-chore" data-id="${task.id}" data-person="${p}">${p} did it</button>`).join('');
+            todoChoreListEl.innerHTML += `<li class="chore-item"><span>${task.description}</span><div>${completeButtons}</div></li>`;
+        });
+
+        // Render Shopping List
+        shopping.forEach(task => {
+            let actionButtons;
+            if (task.claimedBy) {
+                actionButtons = `<span class="claimed-by">Claimed by ${task.claimedBy}</span> <button class="task-btn purchase" data-id="${task.id}">Purchased</button>`;
             } else {
-                 timerHtml = `<div class="chore-actions">${choreActions}</div>`;
+                actionButtons = state.roommates.map(p => `<button class="task-btn claim" data-id="${task.id}" data-person="${p}">${p} will buy</button>`).join('');
             }
+            todoShoppingListEl.innerHTML += `<li class="shopping-item"><span>${task.description}</span><div>${actionButtons}</div></li>`;
+        });
 
-            const age = Math.floor((now - new Date(chore.creationDate)) / (1000 * 60 * 60 * 24));
-            const ageText = age > 0 ? ` (added ${age}d ago)` : ' (added today)';
-            const lastCompletedText = isRecurring ? (chore.lastCompletedBy ? `Last done by <span class="person-name ${getPersonClass(chore.lastCompletedBy)}">${chore.lastCompletedBy}</span> on ${new Date(chore.lastCompletedDate).toLocaleDateString()}` : 'Not yet completed') : `Added ${new Date(chore.creationDate).toLocaleDateString()}${ageText}`;
+        // Render Wishlist
+         wishes.forEach(task => {
+            let actionButtons;
+            if (task.claimedBy) {
+                actionButtons = `<span class="claimed-by">Claimed by ${task.claimedBy}</span> <button class="task-btn purchase" data-id="${task.id}">Purchased</button>`;
+            } else {
+                actionButtons = state.roommates.map(p => `<button class="task-btn claim" data-id="${task.id}" data-person="${p}">${p} will buy</button>`).join('');
+            }
+            todoWishListEl.innerHTML += `<li class="shopping-item"><span>${task.description}</span><div>${actionButtons}</div></li>`;
+        });
 
-            return `
-                <li class="chore-item">
-                    <div class="chore-info">
-                        <span class="chore-description">${chore.description}</span>
-                        <small class="chore-last-completed">${lastCompletedText}</small>
-                    </div>
-                    ${timerHtml}
-                </li>`;
-        };
-
-        if (oneTimeChores.length === 0) oneTimeChoreListEl.innerHTML = '<li>No one-time chores.</li>';
-        else oneTimeChores.sort((a,b) => new Date(a.creationDate) - new Date(b.creationDate)).forEach(c => oneTimeChoreListEl.innerHTML += renderChoreItem(c, false));
-
-        if (recurringChores.length === 0) recurringChoreListEl.innerHTML = '<li>No recurring chores.</li>';
-        else recurringChores.sort((a, b) => {
-                const aDueDate = a.lastCompletedDate ? new Date(new Date(a.lastCompletedDate).getTime() + a.durationDays * 86400000) : now;
-                const bDueDate = b.lastCompletedDate ? new Date(new Date(b.lastCompletedDate).getTime() + b.durationDays * 86400000) : now;
-                return aDueDate - bDueDate;
-            }).forEach(c => recurringChoreListEl.innerHTML += renderChoreItem(c, true));
-
-        if (state.completedChores.length === 0) completedChoreListEl.innerHTML = '<li>No chores completed recently.</li>';
-        else state.completedChores.sort((a,b) => new Date(b.completionDate) - new Date(a.completionDate)).forEach(chore => {
-            const personClass = getPersonClass(chore.lastCompletedBy);
-            completedChoreListEl.innerHTML += `
-                <li class="chore-item completed">
-                    <div class="chore-info">
-                        <span class="chore-description">${chore.description}</span>
-                        <small class="chore-last-completed">Completed by <span class="person-name ${personClass}">${chore.lastCompletedBy}</span> on ${new Date(chore.completionDate).toLocaleDateString()}</small>
-                    </div>
-                </li>`;
+        // Render Completed
+        completed.sort((a,b) => new Date(b.completionDate || b.purchaseDate) - new Date(a.completionDate || a.purchaseDate)).forEach(task => {
+            let text = '';
+            if (task.type === 'chore') {
+                text = `Completed by ${task.lastCompletedBy} on ${new Date(task.completionDate).toLocaleDateString()}`;
+            } else {
+                text = `Purchased by ${task.purchasedBy} on ${new Date(task.purchaseDate).toLocaleDateString()}`;
+            }
+            completedTaskListEl.innerHTML += `<li class="task-item completed"><span>${task.description}</span><small>${text}</small></li>`;
         });
     }
 
@@ -736,7 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Contribution Chart
         const contributionCtx = document.getElementById('contribution-chart').getContext('2d');
-        const contributions = state.fundHistory.filter(item => item.type === 'contribution');
+        const contributions = state.transactions.filter(item => item.type === 'contribution');
         if (contributions.length > 0) {
             contributions.sort((a, b) => new Date(a.date) - new Date(b.date));
             const dailyContributions = new Map();
@@ -786,9 +904,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const categoryCtx = document.getElementById('category-chart').getContext('2d');
         const categoryTotals = {};
         let totalExpenses = 0;
-        state.fundHistory.forEach(item => {
+        state.transactions.forEach(item => {
             if (item.type === 'expense') {
-                const amount = Math.abs(item.amount);
+                const amount = item.amount; // Amount is already positive
                 if (!categoryTotals[item.category]) categoryTotals[item.category] = 0;
                 categoryTotals[item.category] += amount;
                 totalExpenses += amount;
@@ -839,35 +957,144 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function renderTransactionDetails() {
+        const type = transactionTypeEl.value;
+        transactionDetailsEl.innerHTML = ''; // Clear previous fields
+
+        let fields = '';
+        const personOptions = state.roommates.map(r => `<option value="${r}">${r}</option>`).join('');
+        const categoryOptions = state.expenseCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+        switch (type) {
+            case 'expense':
+                fields = `
+                    <input type="text" id="txn-expense-description" placeholder="Item Description" required>
+                    <select id="txn-expense-category" required>${categoryOptions}</select>
+                    <input type="number" id="txn-expense-amount" placeholder="Amount" step="0.01" required>
+                `;
+                break;
+            case 'contribution':
+                fields = `
+                    <select id="txn-contribution-person" required>${personOptions}</select>
+                    <input type="number" id="txn-contribution-amount" placeholder="Amount" step="0.01" required>
+                `;
+                break;
+            case 'iou':
+                fields = `
+                    <label>Payer:</label>
+                    <select id="txn-iou-payer" required>${personOptions}</select>
+                    <label>Ower:</label>
+                    <select id="txn-iou-ower" required>${personOptions}</select>
+                    <input type="number" id="txn-iou-amount" placeholder="Amount" step="0.01" required>
+                    <input type="text" id="txn-iou-description" placeholder="For..." required>
+                `;
+                break;
+            case 'mileage':
+                fields = `
+                    <input type="text" id="txn-mileage-description" placeholder="Trip Description" required>
+                    <input type="number" id="txn-mileage-miles" placeholder="Miles" step="0.1" required>
+                `;
+                break;
+        }
+        transactionDetailsEl.innerHTML = fields;
+    }
+
+    function addTransaction(e) {
+        e.preventDefault();
+        const type = transactionTypeEl.value;
+        const now = new Date().toISOString();
+        let newTxn = { id: `txn_${Date.now()}`, date: now, type: type };
+        let logMessage = '';
+
+        try {
+            switch (type) {
+                case 'expense':
+                    newTxn.description = document.getElementById('txn-expense-description').value;
+                    newTxn.category = document.getElementById('txn-expense-category').value;
+                    newTxn.amount = parseFloat(document.getElementById('txn-expense-amount').value);
+                    if (!newTxn.description || !newTxn.category || isNaN(newTxn.amount) || newTxn.amount <= 0) throw new Error("Invalid expense input.");
+                    logMessage = `Expense: ${newTxn.description}`;
+                    break;
+                case 'contribution':
+                    newTxn.person = document.getElementById('txn-contribution-person').value;
+                    newTxn.amount = parseFloat(document.getElementById('txn-contribution-amount').value);
+                    if (!newTxn.person || isNaN(newTxn.amount) || newTxn.amount <= 0) throw new Error("Invalid contribution input.");
+                    logMessage = `${newTxn.person} contributed`;
+                    break;
+                case 'iou':
+                    newTxn.payer = document.getElementById('txn-iou-payer').value;
+                    newTxn.ower = document.getElementById('txn-iou-ower').value;
+                    newTxn.amount = parseFloat(document.getElementById('txn-iou-amount').value);
+                    newTxn.description = document.getElementById('txn-iou-description').value;
+                    if (newTxn.payer === newTxn.ower) throw new Error("Payer and ower cannot be the same.");
+                    if (!newTxn.description || isNaN(newTxn.amount) || newTxn.amount <= 0) throw new Error("Invalid IOU input.");
+                    logMessage = `IOU added: ${newTxn.payer} paid ${newTxn.ower}`;
+                    break;
+                case 'mileage':
+                    newTxn.payer = 'Sage'; // As per assumption
+                    newTxn.ower = 'Emily'; // As per assumption
+                    newTxn.description = document.getElementById('txn-mileage-description').value;
+                    newTxn.miles = parseFloat(document.getElementById('txn-mileage-miles').value);
+                    if (!newTxn.description || isNaN(newTxn.miles) || newTxn.miles <= 0) throw new Error("Invalid mileage input.");
+                    logMessage = `Logged trip: ${newTxn.description}`;
+                    break;
+            }
+
+            state.transactions.push(newTxn);
+            logActivity(logMessage, (type === 'expense' ? -newTxn.amount : newTxn.amount));
+            transactionForm.reset(); // This will reset the select dropdown and clear the inputs
+            renderTransactionDetails(); // Re-render the fields for the (now reset) dropdown
+            saveData();
+            render();
+
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+
     // --- Logic Functions ---
     function recalculateTotals() {
+        // Reset calculated values
         state.fundBalance = 0;
+        state.mileageTotal = 0;
         state.contributions = {};
         state.roommates.forEach(r => state.contributions[r] = 0);
 
-        state.fundHistory.forEach(item => {
-            if (item.type === 'contribution') {
-                state.fundBalance += item.amount;
-                if (state.contributions[item.person] !== undefined) state.contributions[item.person] += item.amount;
-            } else if (item.type === 'expense') {
-                state.fundBalance += item.amount;
-            }
-        });
-
         const effectiveRate = calculateEffectiveRate();
-        state.mileageTotal = 0;
-        state.mileageHistory.forEach(item => {
-            if (item.type === 'trip') {
-                item.cost = item.miles * effectiveRate;
-                state.mileageTotal += item.cost;
-            } else if (item.type === 'payment') {
-                state.mileageTotal -= item.amount;
+
+        state.transactions.forEach(txn => {
+            switch (txn.type) {
+                case 'contribution':
+                    state.fundBalance += txn.amount;
+                    if (state.contributions[txn.person] !== undefined) {
+                        state.contributions[txn.person] += txn.amount;
+                    }
+                    break;
+                case 'expense':
+                    // Expense amount is subtracted from the fund balance
+                    state.fundBalance -= txn.amount;
+                    break;
+                case 'mileage':
+                     // Mileage creates a debt, but doesn't affect the shared fund.
+                     // The cost is calculated dynamically.
+                    const cost = txn.miles * effectiveRate;
+                    // We can handle mileage debt within the IOU logic, but for backward compatibility with the UI,
+                    // we can calculate `mileageTotal` separately for now.
+                    // This assumes mileage is between Sage and Emily.
+                    if (txn.payer === 'Sage' && txn.ower === 'Emily') {
+                        state.mileageTotal += cost;
+                    }
+                    break;
+                case 'iou':
+                    // Direct IOUs don't affect the fund balance.
+                    // However, mileage payments (which are now IOUs) affect the mileage total.
+                    if (txn.description === 'Mileage Payment' && txn.payer === 'Emily' && txn.ower === 'Sage') {
+                        state.mileageTotal -= txn.amount;
+                    }
+                    break;
             }
         });
-    }
-
-    function deleteItem(array, index) {
-        array.splice(index, 1);
     }
 
     function deleteWhiteboardMessage(id) {
@@ -911,36 +1138,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.value = '';
     }
 
-    function addContribution(e) {
-        e.preventDefault();
-        const person = contributionPersonEl.value;
-        const amount = parseFloat(contributionAmountEl.value);
-        if (isNaN(amount) || amount <= 0) return;
-
-        state.fundBalance += amount;
-        state.contributions[person] += amount;
-        state.fundHistory.push({ type: 'contribution', person: person, amount: amount, date: new Date().toISOString() });
-        logActivity(`${person} contributed`, amount);
-        contributionAmountEl.value = '';
-        saveData();
-        render();
-    }
-
-    function addExpense(e) {
-        e.preventDefault();
-        const description = expenseDescriptionEl.value;
-        const category = expenseCategoryEl.value;
-        const amount = parseFloat(expenseAmountEl.value);
-        if (!description || !category || isNaN(amount) || amount <= 0) return;
-
-        state.fundBalance -= amount;
-        state.fundHistory.push({ type: 'expense', description: description, category: category, amount: -amount, date: new Date().toISOString() });
-        logActivity(`Expense: ${description}`, -amount);
-        expenseDescriptionEl.value = '';
-        expenseAmountEl.value = '';
-        saveData();
-        render();
-    }
 
     function addMessage(e) {
         e.preventDefault();
@@ -968,235 +1165,92 @@ document.addEventListener('DOMContentLoaded', () => {
         state.completedChores = state.completedChores.filter(c => new Date(c.completionDate).getTime() > thirtyDaysAgo);
     }
 
-    function addChore(e) {
+    function handleTaskTypeChange() {
+        if (choreOptionsEl) {
+            choreOptionsEl.style.display = taskTypeEl.value === 'chore' ? 'block' : 'none';
+        }
+    }
+
+    function addTask(e) {
         e.preventDefault();
-        const description = choreDescriptionEl.value;
-        const duration = choreDurationEl.value;
+        const description = taskDescriptionEl.value.trim();
         if (!description) return;
-        const isOneTime = !duration;
-        const durationDays = isOneTime ? null : parseInt(duration, 10);
-        if (!isOneTime && (isNaN(durationDays) || durationDays <= 0)) {
-            alert('Invalid duration.');
-            return;
-        }
-        state.chores.push({ id: `c_${Date.now()}`, description: description, isOneTime, durationDays: durationDays, creationDate: new Date().toISOString(), lastCompletedBy: null, lastCompletedDate: null });
-        logActivity(`Chore added: ${description}`);
-        choreDescriptionEl.value = '';
-        choreDurationEl.value = '';
-        saveData();
-        render();
-    }
 
-    function completeChore(id, person) {
-        const index = state.chores.findIndex(c => c.id === id);
-        if (index === -1) return;
-        const chore = state.chores[index];
-        chore.lastCompletedBy = person;
-        chore.lastCompletedDate = new Date().toISOString();
-        logActivity(`${person} completed chore: ${chore.description}`);
-        if (chore.isOneTime) {
-            chore.completionDate = new Date().toISOString();
-            state.completedChores.push(chore);
-            state.chores.splice(index, 1);
-        }
-        saveData();
-        render();
-    }
-
-    function logTrip(e) {
-        e.preventDefault();
-        const description = tripDescriptionEl.value;
-        const miles = parseFloat(tripMilesEl.value);
-        if (!description || isNaN(miles) || miles <= 0) return;
-        const cost = miles * calculateEffectiveRate();
-        state.mileageTotal += cost;
-        state.mileageHistory.push({ type: 'trip', description, miles, cost, date: new Date().toISOString() });
-        logActivity(`Logged trip: ${description}`, cost);
-        tripDescriptionEl.value = '';
-        tripMilesEl.value = '';
-        saveData();
-        render();
-    }
-
-    function recordMileagePayment(e) {
-        e.preventDefault();
-        const amount = parseFloat(paymentAmountEl.value);
-        if (isNaN(amount) || amount <= 0) return;
-        state.mileageTotal -= amount;
-        state.mileageHistory.push({ type: 'payment', amount, date: new Date().toISOString() });
-        logActivity(`Mileage payment recorded`, -amount);
-        paymentAmountEl.value = '';
-        saveData();
-        render();
-    }
-
-    function addIOU(e) {
-        e.preventDefault();
-        const payer = iouPayerEl.value;
-        const ower = iouOwerEl.value;
-        const amount = parseFloat(iouAmountEl.value);
-        const description = iouDescriptionEl.value.trim();
-
-        if (payer === ower) {
-            alert("Payer and ower cannot be the same person.");
-            return;
-        }
-        if (isNaN(amount) || amount <= 0 || !description) {
-            alert("Please fill out all fields correctly.");
-            return;
-        }
-
-        state.ious.push({
-            id: `iou_${Date.now()}`,
-            payer,
-            ower,
-            amount,
+        const type = taskTypeEl.value;
+        const now = new Date().toISOString();
+        const newTask = {
+            id: `task_${Date.now()}`,
             description,
-            date: new Date().toISOString()
-        });
-        logActivity(`IOU added: ${payer} paid ${ower} for ${description}`, amount);
-        iouAmountEl.value = '';
-        iouDescriptionEl.value = '';
+            type,
+            status: 'todo',
+            date: now,
+            creationDate: now, // For compatibility with chore logic
+        };
+
+        if (type === 'chore') {
+            const duration = choreDurationEl.value;
+            const isOneTime = !duration;
+            const durationDays = isOneTime ? null : parseInt(duration, 10);
+            if (!isOneTime && (isNaN(durationDays) || durationDays <= 0)) {
+                alert('Invalid duration for recurring chore.');
+                return;
+            }
+            newTask.isOneTime = isOneTime;
+            newTask.durationDays = durationDays;
+            newTask.lastCompletedBy = null;
+            newTask.lastCompletedDate = null;
+        } else { // shopping or wish
+            newTask.addedBy = state.roommates[0]; // Default to first roommate for now
+            newTask.claimedBy = null;
+        }
+
+        state.tasks.push(newTask);
+        logActivity(`Task added: ${description}`);
+        taskForm.reset();
+        handleTaskTypeChange();
         saveData();
         render();
     }
 
-    function splitBill(e) {
-        e.preventDefault();
-        const description = billDescriptionEl.value.trim();
-        const totalAmount = parseFloat(billTotalAmountEl.value);
-        const payer = billPayerEl.value;
-        const splitType = billSplitTypeEl.value;
+    function updateTask(id, action, person) {
+        const task = state.tasks.find(t => t.id === id);
+        if (!task) return;
 
-        if (!description || isNaN(totalAmount) || totalAmount <= 0 || !payer) {
-            alert('Please fill out all bill details correctly.');
-            return;
-        }
-
-        const owers = state.roommates.filter(r => r !== payer);
-        if (owers.length === 0) {
-             alert('Cannot split a bill with only one person.');
-             return;
-        }
-
-        const newIous = [];
-        let success = false;
-
-        if (splitType === 'equally') {
-            const amountPerPerson = totalAmount / state.roommates.length;
-            owers.forEach(ower => {
-                newIous.push({ payer, ower, amount: amountPerPerson, description: `${description} (split equally)` });
-            });
-            success = true;
-
-        } else if (splitType === 'percentage' || splitType === 'fixed') {
-            const inputs = billSplitDetailsEl.querySelectorAll('input');
-            const shares = Array.from(inputs).map(input => ({
-                person: input.dataset.person,
-                value: parseFloat(input.value) || 0
-            }));
-
-            if (shares.some(s => s.value < 0)) {
-                alert('Negative values are not allowed.');
-                return;
-            }
-
-            if (splitType === 'percentage') {
-                const totalPercent = shares.reduce((sum, s) => sum + s.value, 0);
-                if (totalPercent > 100) {
-                    alert(`Percentages for owers cannot exceed 100. Current total: ${totalPercent}%`);
+        switch (action) {
+            case 'complete':
+                task.status = 'completed';
+                task.lastCompletedBy = person;
+                task.completionDate = new Date().toISOString();
+                logActivity(`${person} completed chore: ${task.description}`);
+                if (!task.isOneTime) {
+                    // For recurring chores, we don't move them, just update date
+                    task.status = 'todo';
+                    task.lastCompletedDate = new Date().toISOString();
+                }
+                break;
+            case 'claim':
+                task.claimedBy = person;
+                logActivity(`${person} claimed: ${task.description}`);
+                break;
+            case 'unclaim':
+                logActivity(`${task.claimedBy} unclaimed: ${task.description}`);
+                task.claimedBy = null;
+                break;
+            case 'purchase':
+                if (!task.claimedBy) {
+                    alert("Please claim the item before marking it as purchased.");
                     return;
                 }
-                shares.forEach(share => {
-                    const amount = totalAmount * (share.value / 100);
-                    newIous.push({ payer, ower: share.person, amount, description: `${description} (${share.value}%)` });
-                });
-                success = true;
-
-            } else { // fixed
-                const totalFixed = shares.reduce((sum, s) => sum + s.value, 0);
-                if (totalFixed > totalAmount) {
-                    alert(`Fixed amounts for owers cannot exceed the total bill of $${totalAmount.toFixed(2)}. Current total: $${totalFixed.toFixed(2)}`);
-                    return;
-                }
-                shares.forEach(share => {
-                    newIous.push({ payer, ower: share.person, amount: share.value, description: `${description} (fixed split)` });
-                });
-                success = true;
-            }
+                task.status = 'purchased';
+                task.purchasedBy = task.claimedBy;
+                task.purchaseDate = new Date().toISOString();
+                logActivity(`${task.purchasedBy} purchased: ${task.description}`);
+                break;
         }
-
-        if (success) {
-            let totalOwed = 0;
-            newIous.forEach(iou => {
-                 if (iou.amount > 0) { // Only add IOU if there is an amount owed
-                    state.ious.push({
-                        id: `iou_${Date.now()}_${iou.ower}`,
-                        payer: iou.payer,
-                        ower: iou.ower,
-                        amount: iou.amount,
-                        description: iou.description,
-                        date: new Date().toISOString()
-                    });
-                    totalOwed += iou.amount;
-                }
-            });
-            logActivity(`${payer} split bill for ${description}`, totalOwed);
-        } else {
-            alert('Could not process split. Unknown error.');
-            return;
-        }
-
-        billDescriptionEl.value = '';
-        billTotalAmountEl.value = '';
-        billPayerEl.selectedIndex = 0;
-        billSplitDetailsEl.innerHTML = '';
         saveData();
         render();
     }
 
-    function renderBillSplitDetails() {
-        const splitType = billSplitTypeEl.value;
-        billSplitDetailsEl.innerHTML = ''; // Clear previous details
-
-        if (splitType === 'percentage' || splitType === 'fixed') {
-            const payer = billPayerEl.value;
-            if (!payer) {
-                billSplitDetailsEl.innerHTML = '<p style="color: red; font-size: 0.9rem;">Please select who paid first.</p>';
-                return;
-            }
-            const owers = state.roommates.filter(r => r !== payer);
-
-            owers.forEach(person => {
-                const row = document.createElement('div');
-                row.className = 'setting-row';
-
-                const label = document.createElement('label');
-                label.for = `split-input-${person}`;
-                label.textContent = `${person}'s share:`;
-
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.id = `split-input-${person}`;
-                input.dataset.person = person;
-
-                if (splitType === 'percentage') {
-                    input.placeholder = '%';
-                    input.step = "1";
-                    input.min = "0";
-                    input.max = "100";
-                } else { // fixed
-                    input.placeholder = '$';
-                    input.step = "0.01";
-                    input.min = "0";
-                }
-
-                row.appendChild(label);
-                row.appendChild(input);
-                billSplitDetailsEl.appendChild(row);
-            });
-        }
-    }
 
     function updateMileageSettings() {
         state.mileageSettings = { mpg: parseFloat(mpgInput.value)||0, gasCost: parseFloat(gasCostInput.value)||0, maintenance: parseFloat(maintenanceFeeInput.value)||0, convenience: parseFloat(convenienceFeeInput.value)||0 };
@@ -1266,127 +1320,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderShoppingList() {
-        shoppingListEl.innerHTML = '';
-        wishlistEl.innerHTML = '';
-        recentlyPurchasedListEl.innerHTML = '';
-
-        const renderItem = (item, listType) => {
-            let actionButtons = '';
-            if (listType === 'shopping' || listType === 'wish') {
-                 if (item.claimedBy) {
-                    const claimedClass = getPersonClass(item.claimedBy);
-                    actionButtons = `<div class="shopping-actions"><span class="claimed-by ${claimedClass}">${item.claimedBy} will buy</span> <button class="shopping-btn unclaim" data-id="${item.id}" data-list="${listType}">Unclaim</button> <button class="shopping-btn purchase" data-id="${item.id}" data-list="${listType}">Purchased</button></div>`;
-                } else {
-                    const claimButtons = state.roommates.map(p =>
-                        `<button class="shopping-btn claim ${getPersonClass(p)}" data-id="${item.id}" data-person="${p}" data-list="${listType}">${p} will buy</button>`
-                    ).join('');
-                    actionButtons = `<div class="shopping-actions">${claimButtons}</div>`;
-                }
-            }
-            const addedByClass = getPersonClass(item.addedBy);
-            return `
-                <li class="shopping-item">
-                    <div class="shopping-info">
-                        <span class="shopping-description">${item.description}</span>
-                        <small>Added by <span class="person-name ${addedByClass}">${item.addedBy}</span> on ${new Date(item.date).toLocaleDateString()}</small>
-                    </div>
-                    ${actionButtons}
-                </li>`;
-        };
-
-        if(state.shoppingList.length === 0) shoppingListEl.innerHTML = '<li>Nothing to buy.</li>';
-        else state.shoppingList.forEach(item => shoppingListEl.innerHTML += renderItem(item, 'shopping'));
-
-        if(state.wishlist.length === 0) wishlistEl.innerHTML = '<li>No wishes yet.</li>';
-        else state.wishlist.forEach(item => wishlistEl.innerHTML += renderItem(item, 'wish'));
-
-        if (state.recentlyPurchased.length === 0) recentlyPurchasedListEl.innerHTML = '<li>No items purchased recently.</li>';
-        else state.recentlyPurchased.sort((a,b) => new Date(b.purchaseDate) - new Date(a.purchaseDate)).forEach(item => {
-            const purchaserClass = getPersonClass(item.purchasedBy);
-            recentlyPurchasedListEl.innerHTML += `
-                <li class="shopping-item purchased">
-                    <div class="shopping-info">
-                        <span class="shopping-description">${item.description}</span>
-                        <small>Purchased by <span class="person-name ${purchaserClass}">${item.purchasedBy}</span> on ${new Date(item.purchaseDate).toLocaleDateString()}</small>
-                    </div>
-                </li>`;
-        });
-    }
-
-     function addShoppingItem(e) {
-        e.preventDefault();
-        const description = shoppingItemDescriptionEl.value.trim();
-        const type = shoppingItemTypeEl.value;
-        if (!description) return;
-
-        const person = state.roommates[0]; // For now, default to first roommate. A better implementation might ask who is adding it.
-
-        const newItem = {
-            id: `s_${Date.now()}`,
-            description,
-            addedBy: person,
-            date: new Date().toISOString(),
-            claimedBy: null
-        };
-
-        if (type === 'list') {
-            state.shoppingList.push(newItem);
-            logActivity(`${person} added to shopping list: ${description}`);
-        } else {
-            state.wishlist.push(newItem);
-            logActivity(`${person} added to wishlist: ${description}`);
-        }
-
-        shoppingItemDescriptionEl.value = '';
-        saveData();
-        render();
-    }
-
-    function claimShoppingItem(id, person, listType) {
-        const list = listType === 'shopping' ? state.shoppingList : state.wishlist;
-        const item = list.find(i => i.id === id);
-        if (item) {
-            item.claimedBy = person;
-            logActivity(`${person} claimed: ${item.description}`);
-            saveData();
-            render();
-        }
-    }
-
-    function unclaimShoppingItem(id, listType) {
-        const list = listType === 'shopping' ? state.shoppingList : state.wishlist;
-        const item = list.find(i => i.id === id);
-        if (item) {
-            logActivity(`${item.claimedBy} unclaimed: ${item.description}`);
-            item.claimedBy = null;
-            saveData();
-            render();
-        }
-    }
-
-    function purchaseShoppingItem(id, listType) {
-        const list = listType === 'shopping' ? state.shoppingList : state.wishlist;
-        const itemIndex = list.findIndex(i => i.id === id);
-        if (itemIndex > -1) {
-            const item = list[itemIndex];
-            if (!item.claimedBy) {
-                alert("Please claim the item before marking it as purchased.");
-                return;
-            }
-            const purchasedItem = {
-                ...item,
-                purchasedBy: item.claimedBy,
-                purchaseDate: new Date().toISOString()
-            };
-            state.recentlyPurchased.push(purchasedItem);
-            logActivity(`${item.claimedBy} purchased: ${item.description}`);
-            list.splice(itemIndex, 1);
-            purgeOldRecentlyPurchased();
-            saveData();
-            render();
-        }
-    }
 
     function purgeOldRecentlyPurchased() {
         if (!state.recentlyPurchased) state.recentlyPurchased = [];
@@ -1411,48 +1344,37 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm('Are you sure you want to delete this item?')) {
                 const type = e.target.dataset.type;
                 const id = e.target.dataset.id;
-                const index = e.target.dataset.index;
 
                 switch (type) {
                     case 'whiteboard':
                         deleteWhiteboardMessage(id);
                         break;
-                    case 'fund':
-                        const fundItem = state.fundHistory[index];
-                        if (fundItem.type === 'contribution') {
-                            logActivity(`Deleted contribution from ${fundItem.person}`, fundItem.amount);
-                        } else {
-                            logActivity(`Deleted expense: ${fundItem.description}`, fundItem.amount);
+                    case 'transaction':
+                        const txnIndex = state.transactions.findIndex(t => t.id === id);
+                        if (txnIndex > -1) {
+                            const deletedTxn = state.transactions[txnIndex];
+                            logActivity(`Deleted transaction: ${deletedTxn.type} ${deletedTxn.description || ''}`);
+                            state.transactions.splice(txnIndex, 1);
+                            recalculateTotals();
+                            saveData();
+                            render();
                         }
-                        deleteItem(state.fundHistory, index);
-                        recalculateTotals();
-                        saveData();
-                        render();
-                        break;
-                    case 'mileage':
-                        const mileageItem = state.mileageHistory[index];
-                        if (mileageItem.type === 'trip') {
-                            logActivity(`Deleted trip: ${mileageItem.description}`, mileageItem.cost);
-                        } else {
-                            logActivity(`Deleted mileage payment`, -mileageItem.amount);
-                        }
-                        deleteItem(state.mileageHistory, index);
-                        recalculateTotals();
-                        saveData();
-                        render();
-                        break;
-                    case 'iou':
-                        const iouItem = state.ious[index];
-                        logActivity(`Deleted IOU: ${iouItem.payer} paid $${iouItem.amount.toFixed(2)} for ${iouItem.ower}`);
-                        deleteItem(state.ious, index);
-                        saveData();
-                        render();
                         break;
                 }
             }
         }
-        if (e.target.matches('.chore-btn')) {
-            completeChore(e.target.dataset.choreId, e.target.dataset.person);
+        if (e.target.matches('.task-btn')) {
+            const id = e.target.dataset.id;
+            const person = e.target.dataset.person;
+            if (e.target.matches('.complete-chore')) {
+                updateTask(id, 'complete', person);
+            } else if (e.target.matches('.claim')) {
+                updateTask(id, 'claim', person);
+            } else if (e.target.matches('.unclaim')) {
+                updateTask(id, 'unclaim');
+            } else if (e.target.matches('.purchase')) {
+                updateTask(id, 'purchase');
+            }
         }
         if (e.target.matches('.seen-btn')) {
             const person = e.target.dataset.person;
@@ -1498,24 +1420,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.matches('.delete-category-btn')) {
             deleteExpenseCategory(e.target.dataset.category);
         }
-        if (e.target.matches('.shopping-btn.claim')) {
-            claimShoppingItem(e.target.dataset.id, e.target.dataset.person, e.target.dataset.list);
-        }
-        if (e.target.matches('.shopping-btn.unclaim')) {
-            unclaimShoppingItem(e.target.dataset.id, e.target.dataset.list);
-        }
-        if (e.target.matches('.shopping-btn.purchase')) {
-            purchaseShoppingItem(e.target.dataset.id, e.target.dataset.list);
-        }
     });
 
-    contributionForm.addEventListener('submit', addContribution);
-    expenseForm.addEventListener('submit', addExpense);
-    mileageForm.addEventListener('submit', logTrip);
-    paymentForm.addEventListener('submit', recordMileagePayment);
-    iouForm.addEventListener('submit', addIOU);
-    billSplitForm.addEventListener('submit', splitBill);
-    billSplitTypeEl.addEventListener('change', renderBillSplitDetails);
+    transactionForm.addEventListener('submit', addTransaction);
+    transactionTypeEl.addEventListener('change', renderTransactionDetails);
     whiteboardForm.addEventListener('submit', addMessage);
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
     resetButton.addEventListener('click', resetAllData);
@@ -1523,8 +1431,8 @@ document.addEventListener('DOMContentLoaded', () => {
     importButton.addEventListener('click', () => importFileEl.click());
     importFileEl.addEventListener('change', importData);
     loadTestDataButton.addEventListener('click', () => { if(confirm('Load test data? This will overwrite current data.')){state=generateRandomData();saveData();render();}});
-    choreForm.addEventListener('submit', addChore);
-    shoppingItemForm.addEventListener('submit', addShoppingItem);
+    taskForm.addEventListener('submit', addTask);
+    taskTypeEl.addEventListener('change', handleTaskTypeChange);
     addCategoryForm.addEventListener('submit', addExpenseCategory);
     document.getElementById('roommate-settings-container').addEventListener('change', (e) => {
         if (e.target.matches('input[type="text"]')) {

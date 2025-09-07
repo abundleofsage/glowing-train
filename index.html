@@ -54,14 +54,11 @@
         <h1 class="main-title">S&E Tracker</h1>
         <div id="top-nav" class="top-nav">
             <button class="nav-button active" data-index="0">Overview</button>
-            <button class="nav-button" data-index="1">Fund</button>
-            <button class="nav-button" data-index="2">Mileage</button>
-            <button class="nav-button" data-index="3">IOU</button>
-            <button class="nav-button" data-index="4">Charts</button>
-            <button class="nav-button" data-index="5">Chores</button>
-            <button class="nav-button" data-index="6">Shopping</button>
-            <button class="nav-button" data-index="7">Whiteboard</button>
-            <button class="nav-button" data-index="8">Settings</button>
+            <button class="nav-button" data-index="1">Finance</button>
+            <button class="nav-button" data-index="2">Tasks</button>
+            <button class="nav-button" data-index="3">Charts</button>
+            <button class="nav-button" data-index="4">Whiteboard</button>
+            <button class="nav-button" data-index="5">Settings</button>
         </div>
         <div class="header-controls">
             <button id="export-button" class="control-button">Export</button>
@@ -104,131 +101,40 @@
             </div>
         </div>
 
-        <!-- Shared Fund Section -->
+        <!-- Finance Section (Consolidated) -->
         <div class="card">
-            <h2>Shared Cash Fund</h2>
-            <p>Current Balance: <span id="fund-balance">$0.00</span></p>
+            <h2>Finance</h2>
 
+            <!-- Financial Summary Section -->
             <div class="fund-analytics">
-                <h3>Analytics</h3>
-                <p id="equalizer-text">Contributions are balanced.</p>
-                <div class="contribution-stats" id="contribution-stats-container">
-                    <!-- Roommate contribution stats will be dynamically inserted here -->
+                <h3>Summary</h3>
+                <p>Shared Fund Balance: <span id="finance-fund-balance">$0.00</span></p>
+                <div id="finance-iou-summary">
+                    <!-- Detailed IOU summary will be rendered here by JS -->
                 </div>
             </div>
 
+            <!-- Add Transaction Section -->
             <div class="form-container">
-                <h3>Add Contribution</h3>
-                <form id="contribution-form">
-                    <select id="contribution-person" required>
-                        <!-- Options will be dynamically populated by JS -->
+                <h3>Add Transaction</h3>
+                <form id="transaction-form">
+                    <select id="transaction-type" required>
+                        <option value="expense">Expense</option>
+                        <option value="contribution">Contribution</option>
+                        <option value="iou">IOU</option>
+                        <option value="mileage">Log Mileage</option>
                     </select>
-                    <input type="number" id="contribution-amount" placeholder="Amount" step="0.01" required>
-                    <button type="submit">Add Contribution</button>
+                    <div id="transaction-details">
+                        <!-- Dynamic form fields will be inserted here by JS based on type -->
+                    </div>
+                    <button type="submit">Add Transaction</button>
                 </form>
             </div>
 
-            <div class="form-container">
-                <h3>Record an Expense</h3>
-                <form id="expense-form">
-                    <input type="text" id="expense-description" placeholder="Item Description" required>
-                    <select id="expense-category" required>
-                        <option value="Groceries">Groceries</option>
-                        <option value="Utilities">Utilities</option>
-                        <option value="Entertainment">Entertainment</option>
-                        <option value="Dining Out">Dining Out</option>
-                        <option value="Other">Other</option>
-                    </select>
-                    <input type="number" id="expense-amount" placeholder="Amount" step="0.01" required>
-                    <button type="submit">Add Expense</button>
-                </form>
-            </div>
-
+            <!-- History Section -->
             <h3>History</h3>
-            <ul id="fund-history">
-                <!-- History items will be added here -->
-            </ul>
-        </div>
-
-        <!-- Mileage Section -->
-        <div class="card">
-            <h2>Mileage Tracker (Rides from Sage)</h2>
-            <p>Current Amount Owed: <span id="mileage-total">$0.00</span></p>
-
-            <div class="form-container">
-                <h3>Log a Trip</h3>
-                <form id="mileage-form">
-                    <input type="text" id="trip-description" placeholder="Trip Description" required>
-                    <input type="number" id="trip-miles" placeholder="Miles" step="0.1" required>
-                    <button type="submit">Log Trip</button>
-                </form>
-            </div>
-
-            <div class="form-container">
-                <h3>Record a Payment</h3>
-                <form id="payment-form">
-                    <input type="number" id="payment-amount" placeholder="Amount Paid" step="0.01" required>
-                    <button type="submit">Record Payment</button>
-                </form>
-            </div>
-
-            <h3>Trip Log</h3>
-            <ul id="mileage-history">
-                <!-- Mileage log items will be added here -->
-            </ul>
-        </div>
-
-        <!-- IOU and Bill Splitting Section -->
-        <div class="card">
-            <h2>IOU Tracker</h2>
-            <div class="fund-analytics">
-                <h3>Debt Summary</h3>
-                <p id="iou-summary-text">No one owes anything.</p>
-            </div>
-
-            <div class="form-container">
-                <h3>Log a Direct IOU</h3>
-                <form id="iou-form">
-                    <select id="iou-payer" required>
-                        <!-- Populated by JS -->
-                    </select>
-                    <span>paid for</span>
-                    <select id="iou-ower" required>
-                        <!-- Populated by JS -->
-                    </select>
-                    <input type="number" id="iou-amount" placeholder="Amount" step="0.01" required>
-                    <input type="text" id="iou-description" placeholder="For..." required>
-                    <button type="submit">Add IOU</button>
-                </form>
-            </div>
-
-            <div class="form-container">
-                <h3>Split a Bill</h3>
-                <form id="bill-split-form">
-                    <input type="text" id="bill-description" placeholder="Bill Description (e.g., Pizza Night)" required>
-                    <input type="number" id="bill-total-amount" placeholder="Total Bill Amount" step="0.01" required>
-                     <select id="bill-payer" required>
-                        <option value="" disabled selected>Who paid?</option>
-                        <!-- Populated by JS -->
-                    </select>
-                    <div class="setting-row">
-                        <label for="bill-split-type">Split Method:</label>
-                        <select id="bill-split-type">
-                            <option value="equally">Equally</option>
-                            <option value="percentage">By Percentage</option>
-                            <option value="fixed">By Fixed Amount</option>
-                        </select>
-                    </div>
-                    <div id="bill-split-details">
-                        <!-- Dynamic fields for percentage/fixed split will go here -->
-                    </div>
-                    <button type="submit">Split Bill</button>
-                </form>
-            </div>
-
-            <h3>Active IOUs</h3>
-            <ul id="iou-history">
-                <!-- IOU items will be added here -->
+            <ul id="transaction-history">
+                <!-- Unified transaction history will be rendered here -->
             </ul>
         </div>
 
@@ -245,71 +151,44 @@
             </div>
         </div>
 
-        <!-- Chore Section -->
+        <!-- Tasks Section (Consolidated) -->
         <div class="card">
-            <h2>Chores</h2>
+            <h2>Tasks</h2>
+
+            <!-- Add Task Form -->
             <div class="form-container">
-                <form id="chore-form">
-                    <input type="text" id="chore-description" placeholder="Chore Description" required>
-                    <input type="number" id="chore-duration" placeholder="Days to repeat (or leave blank for one-time)" min="1" step="1">
-                    <button type="submit">Add Chore</button>
-                </form>
-            </div>
-
-            <div class="chore-section">
-                <h3>One-Time Chores</h3>
-                <ul id="one-time-chore-list">
-                    <!-- One-time chore items will be rendered here -->
-                </ul>
-            </div>
-
-            <div class="chore-section">
-                <h3>Recurring Chores</h3>
-                <ul id="recurring-chore-list">
-                    <!-- Recurring chore items will be rendered here -->
-                </ul>
-            </div>
-
-            <div class="chore-section">
-                <h3>Completed Chores</h3>
-                <ul id="completed-chore-list">
-                    <!-- Completed chore items will be rendered here -->
-                </ul>
-            </div>
-        </div>
-
-        <!-- Shopping List Section -->
-        <div class="card">
-            <h2>Shopping List</h2>
-            <div class="form-container">
-                <form id="shopping-item-form">
-                    <input type="text" id="shopping-item-description" placeholder="Item to buy" required>
-                    <select id="shopping-item-type">
-                        <option value="list">Shopping List</option>
-                        <option value="wish">Wishlist</option>
+                <h3>Add a Task</h3>
+                <form id="task-form">
+                    <input type="text" id="task-description" placeholder="Task description..." required>
+                    <select id="task-type">
+                        <option value="chore">Chore</option>
+                        <option value="shopping">Shopping Item</option>
+                        <option value="wish">Wishlist Item</option>
                     </select>
-                    <button type="submit">Add Item</button>
+                    <!-- Chore-specific options will be shown/hidden by JS -->
+                    <div id="chore-options" style="display: none;">
+                         <input type="number" id="chore-duration" placeholder="Days to repeat (or leave blank for one-time)" min="1" step="1">
+                    </div>
+                    <button type="submit">Add Task</button>
                 </form>
             </div>
 
-            <div class="shopping-section">
-                <h3>Need to Buy</h3>
-                <ul id="shopping-list">
-                    <!-- Shopping list items will be rendered here -->
-                </ul>
+            <!-- Task Lists -->
+            <div class="task-section">
+                <h3>To Do Chores</h3>
+                <ul id="todo-chore-list"></ul>
             </div>
-
-            <div class="shopping-section">
+            <div class="task-section">
+                <h3>Shopping List</h3>
+                <ul id="todo-shopping-list"></ul>
+            </div>
+            <div class="task-section">
                 <h3>Wishlist</h3>
-                <ul id="wishlist">
-                    <!-- Wishlist items will be rendered here -->
-                </ul>
+                <ul id="todo-wish-list"></ul>
             </div>
-             <div class="shopping-section">
-                <h3>Recently Purchased</h3>
-                <ul id="recently-purchased-list">
-                    <!-- Recently purchased items will be rendered here -->
-                </ul>
+            <div class="task-section">
+                <h3>Completed / Purchased</h3>
+                <ul id="completed-task-list"></ul>
             </div>
         </div>
 
