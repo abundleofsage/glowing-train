@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportButton = document.getElementById('export-button');
     const importButton = document.getElementById('import-button');
     const importFileEl = document.getElementById('import-file');
-    const loadTestDataButton = document.getElementById('load-test-data-button');
 
     // Whiteboard
     const whiteboardForm = document.getElementById('whiteboard-form');
@@ -36,11 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const maintenanceFeeInput = document.getElementById('maintenance-fee');
     const convenienceFeeInput = document.getElementById('convenience-fee');
     const effectiveRateEl = document.getElementById('effective-rate');
-
-    // --- Chart instances ---
-    let contributionChart = null;
-    let categoryChart = null;
-    let fundBalanceChart = null;
 
     // --- State ---
     let state = {};
@@ -372,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderFinance();
         renderOverview();
-        renderCharts();
         renderTasks();
         renderSettings();
         if(transactionTypeEl) renderTransactionDetails(); // Render the dynamic form
@@ -516,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     debts[txn.ower][txn.payer] += txn.amount;
                 }
             } else if (txn.type === 'mileage') {
-                const cost = txn.miles * effectiveRate;
+                const cost = txn.miles * (txn.effectiveRate || effectiveRate);
                 if (debts[txn.ower] && debts[txn.ower][txn.payer] !== undefined) {
                     debts[txn.ower][txn.payer] += cost;
                 }
@@ -578,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     content = `<div>IOU: <span class="person-name ${getPersonClass(txn.payer)}">${txn.payer}</span> paid <span class="person-name ${getPersonClass(txn.ower)}">${txn.ower}</span> <b>$${txn.amount.toFixed(2)}</b> for "${txn.description}"</div>`;
                     break;
                 case 'mileage':
-                     const cost = txn.miles * effectiveRate;
+                     const cost = txn.miles * (txn.effectiveRate || effectiveRate);
                     content = `<div>Mileage: <span class="person-name ${getPersonClass(txn.payer)}">${txn.payer}</span> drove ${txn.ower} ${txn.miles} miles for "${txn.description}" (<b>$${cost.toFixed(2)}</b>)</div>`;
                     break;
             }
@@ -721,100 +714,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderCharts() {
-        const isDarkMode = document.body.classList.contains('dark-mode');
-        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-        const textColor = isDarkMode ? '#ecf0f1' : '#333';
-        if (contributionChart) contributionChart.destroy();
-        if (categoryChart) categoryChart.destroy();
-
-        const chartColors = {
-            'sage': '#9b59b6',
-            'emily': '#3498db',
-            'susan': '#2ecc71',
-            'default': ['#f1c40f', '#e67e22', '#e74c3c', '#1abc9c']
-        };
-        let colorIndex = 0;
-
-        const getPersonColor = (person) => {
-            const pClass = getPersonClass(person);
-            return chartColors[pClass] || chartColors.default[colorIndex++ % chartColors.default.length];
-        };
-
-        // Contribution Chart
-        const contributionCtx = document.getElementById('contribution-chart').getContext('2d');
-        const contributions = state.transactions.filter(item => item.type === 'contribution');
-        if (contributions.length > 0) {
-            contributions.sort((a, b) => new Date(a.date) - new Date(b.date));
-            const dailyContributions = new Map();
-            const cumulativeContributions = {};
-            state.roommates.forEach(r => cumulativeContributions[r] = 0);
-
-            contributions.forEach(c => {
-                const date = new Date(c.date).toLocaleDateString();
-                if (!dailyContributions.has(date)) {
-                    const dailyTotals = {};
-                    state.roommates.forEach(r => dailyTotals[r] = 0);
-                    dailyContributions.set(date, dailyTotals);
-                }
-                if(dailyContributions.get(date)[c.person] !== undefined) {
-                    dailyContributions.get(date)[c.person] += c.amount;
-                }
-            });
-
-            const labels = Array.from(dailyContributions.keys());
-            const datasets = state.roommates.map(person => {
-                const data = [];
-                let cumulative = 0;
-                labels.forEach(label => {
-                    const dailyTotal = dailyContributions.get(label)[person] || 0;
-                    cumulative += dailyTotal;
-                    data.push(cumulative);
-                });
-                const color = getPersonColor(person);
-                return {
-                    label: `${person}'s Contributions`,
-                    data: data,
-                    borderColor: color,
-                    backgroundColor: `${color}1A`, // Add alpha for fill
-                    fill: true,
-                    tension: 0.1
-                };
-            });
-
-            contributionChart = new Chart(contributionCtx, {
-                type: 'line',
-                data: { labels, datasets },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { labels: { color: textColor } } } }
-            });
-        }
-
-        // Category Chart
-        const categoryCtx = document.getElementById('category-chart').getContext('2d');
-        const categoryTotals = {};
-        let totalExpenses = 0;
-        state.transactions.forEach(item => {
-            if (item.type === 'expense') {
-                const amount = item.amount; // Amount is already positive
-                if (!categoryTotals[item.category]) categoryTotals[item.category] = 0;
-                categoryTotals[item.category] += amount;
-                totalExpenses += amount;
-            }
-        });
-        if (totalExpenses > 0) {
-            const categoryLabels = Object.keys(categoryTotals);
-            const categoryData = Object.values(categoryTotals);
-            categoryChart = new Chart(categoryCtx, {
-                type: 'pie',
-                data: {
-                    labels: categoryLabels,
-                    datasets: [{ data: categoryData, backgroundColor: ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'], borderWidth: 1, borderColor: isDarkMode ? '#34495e' : '#ffffff' }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: textColor } }, tooltip: { callbacks: { label: ctx => `${ctx.label}: $${ctx.parsed.toFixed(2)} (${(ctx.parsed / totalExpenses * 100).toFixed(1)}%)` } } } }
-            });
-        }
-    }
-
     function renderSettings() {
         // General
         const roommateSettingsContainer = document.getElementById('roommate-settings-container');
@@ -836,6 +735,10 @@ document.addEventListener('DOMContentLoaded', () => {
         gasCostInput.value = state.mileageSettings.gasCost;
         maintenanceFeeInput.value = state.mileageSettings.maintenance;
         convenienceFeeInput.value = state.mileageSettings.convenience;
+        if (effectiveRateEl) {
+            effectiveRateEl.textContent = calculateEffectiveRate().toFixed(2);
+        }
+
 
         // Categories
         expenseCategoryListEl.innerHTML = '';
@@ -924,6 +827,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     newTxn.ower = 'Emily'; // As per assumption
                     newTxn.description = document.getElementById('txn-mileage-description').value;
                     newTxn.miles = parseFloat(document.getElementById('txn-mileage-miles').value);
+                    newTxn.effectiveRate = calculateEffectiveRate(); // Store the rate at the time of logging
                     if (!newTxn.description || isNaN(newTxn.miles) || newTxn.miles <= 0) throw new Error("Invalid mileage input.");
                     logMessage = `Logged trip: ${newTxn.description}`;
                     break;
@@ -965,9 +869,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     state.fundBalance -= txn.amount;
                     break;
                 case 'mileage':
-                     // Mileage creates a debt, but doesn't affect the shared fund.
-                     // The cost is calculated dynamically.
-                    const cost = txn.miles * effectiveRate;
+                    // Mileage creates a debt, but doesn't affect the shared fund.
+                    // The cost is calculated dynamically, using the stored rate if available.
+                    const cost = txn.miles * (txn.effectiveRate || effectiveRate);
                     // We can handle mileage debt within the IOU logic, but for backward compatibility with the UI,
                     // we can calculate `mileageTotal` separately for now.
                     // This assumes mileage is between Sage and Emily.
@@ -1223,7 +1127,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('dark-mode', isDark);
         themeToggle.checked = isDark;
         themeToggleSettings.checked = isDark;
-        renderCharts(); // Re-render charts for color change
     }
     function loadTheme() { switchTheme(localStorage.getItem('theme') === 'dark'); }
 
@@ -1319,7 +1222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     exportButton.addEventListener('click', exportData);
     importButton.addEventListener('click', () => importFileEl.click());
     importFileEl.addEventListener('change', importData);
-    loadTestDataButton.addEventListener('click', () => { if(confirm('Load test data? This will overwrite current data.')){state=generateRandomData();saveData();render();}});
     taskForm.addEventListener('submit', addTask);
     taskTypeEl.addEventListener('change', handleTaskTypeChange);
     addCategoryForm.addEventListener('submit', addExpenseCategory);

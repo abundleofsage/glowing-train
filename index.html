@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sage & Emily's Expense Tracker</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .overview-grid {
             display: grid;
@@ -56,15 +55,13 @@
             <button class="nav-button active" data-index="0">Overview</button>
             <button class="nav-button" data-index="1">Finance</button>
             <button class="nav-button" data-index="2">Tasks</button>
-            <button class="nav-button" data-index="3">Charts</button>
-            <button class="nav-button" data-index="4">Whiteboard</button>
-            <button class="nav-button" data-index="5">Settings</button>
+            <button class="nav-button" data-index="3">Whiteboard</button>
         </div>
         <div class="header-controls">
             <button id="export-button" class="control-button">Export</button>
             <button id="import-button" class="control-button">Import</button>
             <input type="file" id="import-file" style="display: none;" accept=".json">
-            <button id="load-test-data-button" class="control-button">Load Test Data</button>
+            <button class="nav-button control-button" data-index="4">Settings</button>
             <button id="reset-button" class="reset-button">Reset</button>
             <div class="theme-switcher">
                 <label class="switch">
@@ -87,12 +84,6 @@
                 <div class="overview-section" id="upcoming-chores-section">
                     <h3>Upcoming Chores (Next 3 Days)</h3>
                     <ul id="upcoming-chores-list"></ul>
-                </div>
-                <div class="overview-section" id="fund-chart-section">
-                    <h3>Fund Balance History</h3>
-                    <div class="chart-container" style="height: 220px;">
-                        <canvas id="fund-balance-chart"></canvas>
-                    </div>
                 </div>
                 <div class="overview-section" id="activity-log-section">
                     <h3>Recent Activity</h3>
@@ -136,19 +127,6 @@
             <ul id="transaction-history">
                 <!-- Unified transaction history will be rendered here -->
             </ul>
-        </div>
-
-        <!-- Charts Section -->
-        <div class="card">
-            <h2>Charts</h2>
-            <div class="chart-container">
-                <h3>Contribution History</h3>
-                <canvas id="contribution-chart"></canvas>
-            </div>
-            <div class="chart-container">
-                <h3>Expense Category Breakdown</h3>
-                <canvas id="category-chart"></canvas>
-            </div>
         </div>
 
         <!-- Tasks Section (Consolidated) -->
