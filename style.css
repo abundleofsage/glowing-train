@@ -451,14 +451,14 @@ input:checked + .slider:before {
     opacity: 0.8;
 }
 
-.chore-btn.sage, .person-name.sage {
-    color: #9b59b6 !important; /* Purple */
+.chore-btn.sage, .task-btn.sage, .whiteboard-post-btn.sage {
     background-color: #9b59b6;
+    color: white !important;
 }
 
-.chore-btn.emily, .person-name.emily {
-    color: #3498db !important; /* Blue */
+.chore-btn.emily, .task-btn.emily, .whiteboard-post-btn.emily {
     background-color: #3498db;
+    color: white !important;
 }
 
 .chore-btn.susan, .person-name.susan {
@@ -466,8 +466,12 @@ input:checked + .slider:before {
     background-color: #2ecc71;
 }
 
-.chore-btn.sage, .chore-btn.emily, .chore-btn.susan {
-    color: white !important;
+.person-name.sage {
+    color: #9b59b6 !important; /* Purple */
+}
+
+.person-name.emily {
+    color: #3498db !important; /* Blue */
 }
 
 .person-name {

@@ -968,7 +968,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 historyHtml += '</ul>';
             }
 
-            const completeButtons = state.roommates.map(p => `<button class="task-btn complete-chore" data-id="${task.id}" data-person="${p}">${p} did it</button>`).join('');
+            const completeButtons = state.roommates.map(p => `<button class="task-btn complete-chore ${getPersonClass(p)}" data-id="${task.id}" data-person="${p}">${p} did it</button>`).join('');
             todoChoreListEl.innerHTML += `<li class="chore-item">
                 <div class="chore-info">
                     <span class="chore-description">${task.description}${statusText}</span>
@@ -982,9 +982,9 @@ document.addEventListener('DOMContentLoaded', () => {
         shopping.forEach(task => {
             let actionButtons;
             if (task.claimedBy) {
-                actionButtons = `<span class="claimed-by">Claimed by ${task.claimedBy}</span> <button class="task-btn purchase" data-id="${task.id}">Purchased</button>`;
+                actionButtons = `<span class="claimed-by ${getPersonClass(task.claimedBy)}">Claimed by ${task.claimedBy}</span> <button class="task-btn purchase" data-id="${task.id}">Purchased</button>`;
             } else {
-                actionButtons = state.roommates.map(p => `<button class="task-btn claim" data-id="${task.id}" data-person="${p}">${p} will buy</button>`).join('');
+                actionButtons = state.roommates.map(p => `<button class="task-btn claim ${getPersonClass(p)}" data-id="${task.id}" data-person="${p}">${p} will buy</button>`).join('');
             }
             todoShoppingListEl.innerHTML += `<li class="shopping-item"><span>${task.description}</span><div>${actionButtons}</div></li>`;
         });
@@ -993,9 +993,9 @@ document.addEventListener('DOMContentLoaded', () => {
          wishes.forEach(task => {
             let actionButtons;
             if (task.claimedBy) {
-                actionButtons = `<span class="claimed-by">Claimed by ${task.claimedBy}</span> <button class="task-btn purchase" data-id="${task.id}">Purchased</button>`;
+                actionButtons = `<span class="claimed-by ${getPersonClass(task.claimedBy)}">Claimed by ${task.claimedBy}</span> <button class="task-btn purchase" data-id="${task.id}">Purchased</button>`;
             } else {
-                actionButtons = state.roommates.map(p => `<button class="task-btn claim" data-id="${task.id}" data-person="${p}">${p} will buy</button>`).join('');
+                actionButtons = state.roommates.map(p => `<button class="task-btn claim ${getPersonClass(p)}" data-id="${task.id}" data-person="${p}">${p} will buy</button>`).join('');
             }
             todoWishListEl.innerHTML += `<li class="shopping-item"><span>${task.description}</span><div>${actionButtons}</div></li>`;
         });
@@ -1577,7 +1577,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = e.target.closest('.whiteboard-card');
             if (card) {
                 const repliesContainer = card.querySelector('.replies-container');
-                if (repliesContainer && !repliesContainer.querySelector('.reply-form')) {
+                const existingForm = repliesContainer.querySelector('.reply-form');
+
+                if (existingForm) {
+                    existingForm.remove();
+                } else {
                     const replyForm = document.createElement('div');
                     replyForm.className = 'reply-form';
 
@@ -1603,6 +1607,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const person = form.querySelector('select').value;
                 if (message.trim()) {
                     addReply(parentId, message, person);
+                    form.remove(); // Close the form after posting
                 }
             }
         }
