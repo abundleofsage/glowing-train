@@ -787,30 +787,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 iouSummaryEl.innerHTML = `<p>${summaryMessages.join('<br>')}</p>`;
             }
 
-            // Contribution Equalizer Logic
-            const totalContributions = Object.values(state.contributions).reduce((sum, amount) => sum + amount, 0);
-            if (totalContributions > 0) {
-                const averageContribution = totalContributions / state.roommates.length;
-                let equalizerHtml = '<div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 10px;">';
-                let needsEvening = false;
+            // Contribution Equalizer Logic (Top Contributor)
+            const { roommates, contributions } = state;
+            if (roommates.length === 2 && contributions) {
+                const [p1, p2] = roommates;
+                const c1 = contributions[p1] || 0;
+                const c2 = contributions[p2] || 0;
+                const diff = Math.abs(c1 - c2);
 
-                equalizerHtml += `<strong>Contribution Status:</strong><br>Average contribution: <b>$${averageContribution.toFixed(2)}</b> per person.<br>`;
-
-                state.roommates.forEach(person => {
-                    const contribution = state.contributions[person] || 0;
-                    if (contribution < averageContribution) {
-                        const diff = averageContribution - contribution;
-                        equalizerHtml += `<span class="person-name ${getPersonClass(person)}">${person}</span> needs to add <b>$${diff.toFixed(2)}</b> to even out.<br>`;
-                        needsEvening = true;
+                if (diff > 0.01) {
+                    let lowerContributor, higherContributor;
+                    if (c1 < c2) {
+                        lowerContributor = p1;
+                        higherContributor = p2;
+                    } else {
+                        lowerContributor = p2;
+                        higherContributor = p1;
                     }
-                });
 
-                if (!needsEvening) {
-                    equalizerHtml += 'Everyone has met the average contribution. All even!';
+                    let equalizerHtml = `<div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 10px;">`;
+                    equalizerHtml += `<strong>Contribution Status:</strong><br>`;
+                    equalizerHtml += `<span class="person-name ${getPersonClass(lowerContributor)}">${lowerContributor}</span> needs to add <b>$${diff.toFixed(2)}</b> to catch up with <span class="person-name ${getPersonClass(higherContributor)}">${higherContributor}</span>.`;
+                    equalizerHtml += `</div>`;
+                    iouSummaryEl.innerHTML += equalizerHtml;
                 }
-
-                equalizerHtml += '</div>';
-                iouSummaryEl.innerHTML += equalizerHtml;
             }
         }
 
