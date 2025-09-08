@@ -15,10 +15,10 @@
 }
 
 body.dark-mode {
-    --bg-color: #2c3e50;
+    --bg-color: #1a1a1a;
     --text-color: #ecf0f1;
     --header-color: #ffffff;
-    --card-bg-color: #34495e;
+    --card-bg-color: #242424;
     --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
     --border-color: #4a6278;
     --input-bg-color: #2c3e50;

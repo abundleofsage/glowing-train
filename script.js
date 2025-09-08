@@ -360,8 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Rendering ---
     function render() {
         // Update UI elements that depend on roommate names first
-        document.title = `${state.roommates.join(' & ')}'s Expense Tracker`;
-        document.querySelector('.main-title').textContent = `${state.roommates.map(r => r[0]).join('&')} Tracker`;
+        document.title = 'Roommate Tracker';
+        document.querySelector('.main-title').textContent = 'Roommate Tracker';
 
         // Dynamically create whiteboard post buttons
         const whiteboardPostButtons = document.getElementById('whiteboard-post-buttons');
@@ -782,9 +782,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (iouSummaryEl) {
             if (summaryMessages.length === 0) {
-                iouSummaryEl.textContent = 'Everyone is settled up.';
+                iouSummaryEl.innerHTML = '<p>Everyone is settled up.</p>';
             } else {
-                iouSummaryEl.innerHTML = summaryMessages.join('<br>');
+                iouSummaryEl.innerHTML = `<p>${summaryMessages.join('<br>')}</p>`;
+            }
+
+            // Contribution Equalizer Logic
+            const totalContributions = Object.values(state.contributions).reduce((sum, amount) => sum + amount, 0);
+            if (totalContributions > 0) {
+                const averageContribution = totalContributions / state.roommates.length;
+                let equalizerHtml = '<div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 10px;">';
+                let needsEvening = false;
+
+                equalizerHtml += `<strong>Contribution Status:</strong><br>Average contribution: <b>$${averageContribution.toFixed(2)}</b> per person.<br>`;
+
+                state.roommates.forEach(person => {
+                    const contribution = state.contributions[person] || 0;
+                    if (contribution < averageContribution) {
+                        const diff = averageContribution - contribution;
+                        equalizerHtml += `<span class="person-name ${getPersonClass(person)}">${person}</span> needs to add <b>$${diff.toFixed(2)}</b> to even out.<br>`;
+                        needsEvening = true;
+                    }
+                });
+
+                if (!needsEvening) {
+                    equalizerHtml += 'Everyone has met the average contribution. All even!';
+                }
+
+                equalizerHtml += '</div>';
+                iouSummaryEl.innerHTML += equalizerHtml;
             }
         }
 
