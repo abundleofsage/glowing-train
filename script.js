@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     // General
     const resetButton = document.getElementById('reset-button');
+    const loadTestDataButton = document.getElementById('load-test-data-button');
     const exportButton = document.getElementById('export-button');
     const importButton = document.getElementById('import-button');
     const importFileEl = document.getElementById('import-file');
@@ -120,10 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (savedState) {
             loadedState = JSON.parse(savedState);
-        } else if (typeof generateRandomData === 'function') {
-            console.log("No saved state, generating random data for testing.");
-            loadedState = generateRandomData();
         } else {
+            // If no saved state, start with the default empty state.
+            // Test data is now loaded via a separate button.
             loadedState = {};
         }
 
@@ -1026,7 +1026,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function resetAllData() { if (confirm('Are you sure? This will delete all data.')) { localStorage.removeItem('expenseTrackerState'); location.reload(); } }
+    function resetAllData() {
+        if (confirm('Are you sure? This will delete all data and reset to the default state.')) {
+            // Reset state to a copy of the default, which is an empty state
+            state = JSON.parse(JSON.stringify(defaultState));
+            saveData();           // Save the cleared state
+            recalculateTotals();  // Recalculate all totals (which will be zero)
+            render();             // Re-render the entire UI
+            alert('All data has been reset.');
+        }
+    }
+
+    function loadTestData() {
+        if (confirm('Are you sure you want to load test data? This will overwrite current data.')) {
+            if (typeof generateRandomData === 'function') {
+                const testState = generateRandomData();
+                // We need to merge test data with defaultState to ensure all keys are present
+                state = { ...defaultState, ...testState };
+                saveData();
+                location.reload(); // Reload to ensure all components are re-initialized with test data
+            } else {
+                alert('Test data generator (test-data.js) not found.');
+            }
+        }
+    }
+
     function exportData() {
         const dataStr = JSON.stringify(state, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
@@ -1402,6 +1426,7 @@ document.addEventListener('DOMContentLoaded', () => {
     whiteboardForm.addEventListener('submit', addMessage);
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
     resetButton.addEventListener('click', resetAllData);
+    loadTestDataButton.addEventListener('click', loadTestData);
     exportButton.addEventListener('click', exportData);
     importButton.addEventListener('click', () => importFileEl.click());
     importFileEl.addEventListener('change', importData);
