@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sage & Emily's Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.0/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
         .overview-grid {
@@ -113,6 +114,24 @@
                     <h3>Contributions</h3>
                     <div id="contribution-pie-chart-container">
                         <!-- Pie chart will be rendered here -->
+                    </div>
+                </div>
+                <div class="chart-box" style="flex: 1; min-width: 250px;">
+                    <h3>Expenses by Category</h3>
+                    <div id="expense-pie-chart-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="expense-pie-chart"></canvas>
+                    </div>
+                </div>
+                 <div class="chart-box" style="flex: 2; min-width: 100%;">
+                    <h3>Mileage Over Time</h3>
+                    <div id="mileage-line-graph-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="mileage-line-graph"></canvas>
+                    </div>
+                </div>
+                <div class="chart-box" style="flex: 2; min-width: 100%;">
+                    <h3>Monthly Mileage</h3>
+                     <div id="mileage-bar-chart-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="mileage-bar-chart"></canvas>
                     </div>
                 </div>
             </div>

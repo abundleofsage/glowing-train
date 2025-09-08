@@ -45,6 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State ---
     let state = {};
+    // A global object to hold chart instances
+    const charts = {
+        expensePie: null,
+        mileageLine: null,
+        mileageBar: null
+    };
     const defaultState = {
         fundBalance: 0,
         contributions: {},
@@ -530,6 +536,145 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = pieHTML + legendHTML;
     }
 
+    function renderExpensePieChart() {
+        const ctx = document.getElementById('expense-pie-chart');
+        if (!ctx) return;
+
+        const expenseData = state.transactions
+            .filter(t => t.type === 'expense')
+            .reduce((acc, t) => {
+                acc[t.category] = (acc[t.category] || 0) + t.amount;
+                return acc;
+            }, {});
+
+        const labels = Object.keys(expenseData);
+        const data = Object.values(expenseData);
+
+        if (charts.expensePie) {
+            charts.expensePie.destroy();
+        }
+
+        if (labels.length === 0) {
+            document.getElementById('expense-pie-chart-container').innerHTML = '<p>No expense data yet.</p>';
+            return;
+        }
+
+
+        charts.expensePie = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Expenses by Category',
+                    data: data,
+                    backgroundColor: labels.map(l => getPersonColor(l)), // Reuse person color logic for fun colors
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+    }
+
+    function renderMileageLineGraph() {
+        const ctx = document.getElementById('mileage-line-graph');
+        if (!ctx) return;
+
+        const mileageTxns = state.transactions
+            .filter(t => t.type === 'mileage')
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (charts.mileageLine) {
+            charts.mileageLine.destroy();
+        }
+
+        if (mileageTxns.length === 0) {
+            document.getElementById('mileage-line-graph-container').innerHTML = '<p>No mileage data yet.</p>';
+            return;
+        }
+
+        const labels = mileageTxns.map(t => new Date(t.date).toLocaleDateString());
+        const data = mileageTxns.map(t => t.miles);
+
+        charts.mileageLine = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Miles Driven',
+                    data: data,
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function renderMileageBarChart() {
+        const ctx = document.getElementById('mileage-bar-chart');
+        if (!ctx) return;
+
+        const mileageByMonth = state.transactions
+            .filter(t => t.type === 'mileage')
+            .reduce((acc, t) => {
+                const month = new Date(t.date).toLocaleString('default', { month: 'short', year: '2-digit' });
+                acc[month] = (acc[month] || 0) + t.miles;
+                return acc;
+            }, {});
+
+        const labels = Object.keys(mileageByMonth);
+        const data = Object.values(mileageByMonth);
+
+        if (charts.mileageBar) {
+            charts.mileageBar.destroy();
+        }
+
+        if (labels.length === 0) {
+            document.getElementById('mileage-bar-chart-container').innerHTML = '<p>No mileage data yet.</p>';
+            return;
+        }
+
+        charts.mileageBar = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Miles per Month',
+                    data: data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
     function renderWhiteboardMessage(message, level) {
         const date = new Date(message.date);
         const personClass = getPersonClass(message.person);
@@ -574,6 +719,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderFinance() {
         renderPieChart();
+        renderExpensePieChart();
+        renderMileageLineGraph();
+        renderMileageBarChart();
         // 1. Render Summary
         const fundBalanceEl = document.getElementById('finance-fund-balance');
         const iouSummaryEl = document.getElementById('finance-iou-summary');
