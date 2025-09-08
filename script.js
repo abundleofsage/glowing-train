@@ -1074,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Payer:</label>
                     <select id="txn-iou-payer" required>${personOptions}</select>
                     <label>Ower:</label>
-                    <select id="txn-iou-ower" required>${personOptions}</select>
+                    <select id="txn-iou-ower" required></select>
                     <input type="number" id="txn-iou-amount" placeholder="Amount" step="0.01" required>
                     <input type="text" id="txn-iou-description" placeholder="For..." required>
                 `;
@@ -1087,6 +1087,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
         }
         transactionDetailsEl.innerHTML = fields;
+
+        if (type === 'iou') {
+            const payerSelect = document.getElementById('txn-iou-payer');
+            const owerSelect = document.getElementById('txn-iou-ower');
+
+            const updateOwerOptions = () => {
+                const selectedPayer = payerSelect.value;
+                const otherRoommates = state.roommates.filter(r => r !== selectedPayer);
+                owerSelect.innerHTML = otherRoommates.map(r => `<option value="${r}">${r}</option>`).join('');
+            };
+
+            payerSelect.addEventListener('change', updateOwerOptions);
+
+            // Initial population
+            updateOwerOptions();
+        }
     }
 
     function addTransaction(e) {
