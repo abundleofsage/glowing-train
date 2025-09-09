@@ -209,14 +209,16 @@
                     <textarea id="whiteboard-message" placeholder="Share a message..." rows="3" required></textarea>
                     <input type="file" id="whiteboard-attachment" style="display: none;" />
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                        <div>
+                        <div id="whiteboard-action-buttons" style="display: flex; align-items: center; gap: 10px;">
                             <button type="button" id="whiteboard-attachment-btn" title="Attach file" style="background: none; border: none; font-size: 1.8rem; cursor: pointer; padding: 0; color: var(--text-color);">&#x1f4ce;</button>
+                            <button type="button" id="giphy-search-btn" title="Search GIF" style="background: none; border: 1px solid var(--border-color); font-size: 1rem; cursor: pointer; padding: 5px 8px; color: var(--text-color); font-weight: bold; border-radius: 5px; line-height: 1;">GIF</button>
                             <span id="attachment-name" style="margin-left: 10px; font-style: italic;"></span>
                         </div>
                         <div id="whiteboard-post-buttons" style="display: flex; gap: 10px;">
                             <!-- Buttons are now dynamically generated in script.js -->
                         </div>
                     </div>
+                    <div id="whiteboard-gif-preview" style="margin-top: 10px; position: relative;"></div>
                 </form>
             </div>
             <h3>Messages</h3>
@@ -280,6 +282,15 @@
                 </form>
             </div>
 
+            <!-- Giphy Settings -->
+            <div class="form-container" id="giphy-settings-form">
+                <h3>Giphy</h3>
+                <div class="setting-row">
+                    <label for="giphy-api-key">Giphy API Key:</label>
+                    <input type="text" id="giphy-api-key" placeholder="Enter your Giphy API key">
+                </div>
+            </div>
+
             <!-- Data Management -->
             <div class="form-container">
                 <h3>Data Management</h3>
@@ -301,6 +312,21 @@
 
     <script src="test-data.js"></script>
     <script src="script.js"></script>
+
+    <!-- Giphy Search Modal -->
+    <div id="giphy-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="giphy-modal-close">&times;</span>
+            <h3>Search Giphy</h3>
+            <form id="giphy-search-form" style="flex-direction: row;">
+                <input type="text" id="giphy-search-input" placeholder="Search for GIFs..." style="flex-grow: 1;" required>
+                <button type="submit">Search</button>
+            </form>
+            <div id="giphy-results" class="giphy-results-grid">
+                <!-- GIF results will be rendered here -->
+            </div>
+        </div>
+    </div>
 
     <!-- Purchase Modal -->
     <div id="purchase-modal" class="modal" style="display: none;">

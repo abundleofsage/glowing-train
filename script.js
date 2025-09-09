@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const whiteboardAttachmentEl = document.getElementById('whiteboard-attachment');
     const whiteboardAttachmentBtn = document.getElementById('whiteboard-attachment-btn');
     const attachmentNameEl = document.getElementById('attachment-name');
+    const giphySearchBtn = document.getElementById('giphy-search-btn');
+    const giphyModal = document.getElementById('giphy-modal');
+    const giphyModalClose = document.getElementById('giphy-modal-close');
+    const giphySearchForm = document.getElementById('giphy-search-form');
+    const giphySearchInput = document.getElementById('giphy-search-input');
+    const giphyResults = document.getElementById('giphy-results');
+    const whiteboardGifPreview = document.getElementById('whiteboard-gif-preview');
 
     // Consolidated Task Form
     const taskForm = document.getElementById('task-form');
@@ -45,6 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const maintenanceFeeInput = document.getElementById('maintenance-fee');
     const convenienceFeeInput = document.getElementById('convenience-fee');
     const effectiveRateEl = document.getElementById('effective-rate');
+    const giphySettingsForm = document.getElementById('giphy-settings-form');
+    const giphyApiKeyInput = document.getElementById('giphy-api-key');
 
     // --- State ---
     let state = {};
@@ -54,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mileageLine: null,
         mileageBar: null
     };
+    let selectedGifUrl = null;
     const defaultState = {
         fundBalance: 0,
         contributions: {},
@@ -65,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activityLog: [],
         roommates: ['Sage', 'Emily'],
         expenseCategories: ['Groceries', 'Utilities', 'Entertainment', 'Dining Out', 'Other'],
+        giphyApiKey: '',
     };
 
     // --- Helper Functions ---
@@ -586,6 +597,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (giphySearchBtn) {
+        giphySearchBtn.addEventListener('click', () => {
+            if (!state.giphyApiKey) {
+                alert('Please set your Giphy API key in the settings first.');
+                return;
+            }
+            giphyModal.style.display = 'block';
+        });
+    }
+
+    if (giphyModalClose) {
+        giphyModalClose.addEventListener('click', () => {
+            giphyModal.style.display = 'none';
+        });
+    }
+
+    if (giphySearchForm) {
+        giphySearchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const searchTerm = giphySearchInput.value.trim();
+            searchGiphy(searchTerm);
+        });
+    }
+
+    if (giphyResults) {
+        giphyResults.addEventListener('click', (e) => {
+            if (e.target.matches('.giphy-thumbnail')) {
+                selectedGifUrl = e.target.dataset.originalUrl;
+
+                // Show preview with a remove button
+                whiteboardGifPreview.innerHTML = `
+                    <img src="${selectedGifUrl}" style="max-width: 200px; max-height: 150px; border-radius: 5px;">
+                    <button type="button" id="remove-gif-btn" style="position: absolute; top: 0; right: 0; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 1rem; width: 24px; height: 24px;">&times;</button>
+                `;
+                whiteboardGifPreview.style.display = 'block';
+
+                // Close modal
+                giphyModal.style.display = 'none';
+
+                // Add listener for the remove button
+                document.getElementById('remove-gif-btn').addEventListener('click', () => {
+                    selectedGifUrl = null;
+                    whiteboardGifPreview.innerHTML = '';
+                    whiteboardGifPreview.style.display = 'none';
+                });
+            }
+        });
+    }
+
     function renderMileageLineGraph() {
         const ctx = document.getElementById('mileage-line-graph');
         if (!ctx) return;
@@ -709,6 +769,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const cardSizeStyle = `font-size: ${1 - level * 0.075}em;`;
 
+        const gifHTML = message.gif ? `<div class="whiteboard-gif" style="margin-top: 10px;"><img src="${message.gif}" alt="GIF" style="max-width: 100%; border-radius: 5px;"></div>` : '';
+
         return `
             <div class="whiteboard-card" data-id="${message.id}" data-level="${level}" style="${cardSizeStyle}">
                 <div class="card-header ${personClass}">
@@ -717,6 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="card-body">
                     <p>${message.message.replace(/\n/g, '<br>')}</p>
                     ${renderAttachment(message.attachment)}
+                    ${gifHTML}
                 </div>
                 <div class="card-footer">
                     <span class="timestamp">${date.toLocaleString()} (${age})</span>
@@ -1058,6 +1121,11 @@ document.addEventListener('DOMContentLoaded', () => {
             effectiveRateEl.textContent = calculateEffectiveRate().toFixed(2);
         }
 
+        // Giphy API Key
+        if (giphyApiKeyInput) {
+            giphyApiKeyInput.value = state.giphyApiKey || '';
+        }
+
 
         // Categories
         expenseCategoryListEl.innerHTML = '';
@@ -1331,6 +1399,7 @@ document.addEventListener('DOMContentLoaded', () => {
             person,
             date: new Date().toISOString(),
             attachment: attachmentPath, // Can be null
+            gif: selectedGifUrl, // Add selected GIF
             replies: [],
             seenBy: []
         };
@@ -1339,9 +1408,55 @@ document.addEventListener('DOMContentLoaded', () => {
         whiteboardMessageEl.value = '';
         whiteboardAttachmentEl.value = ''; // Reset file input
         attachmentNameEl.textContent = ''; // Clear file name display
+
+        // Clear GIF preview
+        if (whiteboardGifPreview) {
+            selectedGifUrl = null;
+            whiteboardGifPreview.innerHTML = '';
+            whiteboardGifPreview.style.display = 'none';
+        }
         saveData();
         render();
     }
+
+    // --- Giphy Integration ---
+    async function searchGiphy(query) {
+        if (!query) return;
+
+        // Clear previous results and show a loading message
+        giphyResults.innerHTML = '<p>Searching...</p>';
+
+        const apiKey = state.giphyApiKey;
+        const url = `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=24&rating=g`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Giphy API Error: ${errorData.message || response.statusText}`);
+            }
+            const giphyData = await response.json();
+
+            giphyResults.innerHTML = ''; // Clear loading message
+
+            if (giphyData.data && giphyData.data.length > 0) {
+                giphyData.data.forEach(gif => {
+                    const img = document.createElement('img');
+                    img.src = gif.images.fixed_height_small.url;
+                    img.dataset.originalUrl = gif.images.original.url;
+                    img.alt = gif.title;
+                    img.classList.add('giphy-thumbnail'); // Add class for event delegation
+                    giphyResults.appendChild(img);
+                });
+            } else {
+                giphyResults.innerHTML = '<p>No GIFs found for that search term.</p>';
+            }
+        } catch (error) {
+            console.error('Error fetching from Giphy:', error);
+            giphyResults.innerHTML = `<p style="color: red;">Error: ${error.message}</p><p>Please check your API key and network connection.</p>`;
+        }
+    }
+
 
     function purgeOldCompletedChores() {
         if (!state.completedChores) state.completedChores = [];
@@ -1689,6 +1804,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
+    if (giphySettingsForm) {
+        giphySettingsForm.addEventListener('change', () => {
+            if(state.giphyApiKey !== giphyApiKeyInput.value) {
+                state.giphyApiKey = giphyApiKeyInput.value;
+                saveData();
+            }
+        });
+    }
     resetButton.addEventListener('click', resetAllData);
     loadTestDataButton.addEventListener('click', loadTestData);
     exportButton.addEventListener('click', exportData);
@@ -1711,6 +1834,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (e) => {
         if (e.target == purchaseModal) {
             closePurchaseModal();
+        }
+        if (e.target == giphyModal) {
+            giphyModal.style.display = 'none';
         }
     });
 
