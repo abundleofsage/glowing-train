@@ -207,8 +207,15 @@
             <div class="form-container">
                 <form id="whiteboard-form">
                     <textarea id="whiteboard-message" placeholder="Share a message..." rows="3" required></textarea>
-                    <div id="whiteboard-post-buttons" style="display: flex; gap: 10px;">
-                        <!-- Buttons are now dynamically generated in script.js -->
+                    <input type="file" id="whiteboard-attachment" style="display: none;" />
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <div>
+                            <button type="button" id="whiteboard-attachment-btn" title="Attach file" style="background: none; border: none; font-size: 1.8rem; cursor: pointer; padding: 0; color: var(--text-color);">&#x1f4ce;</button>
+                            <span id="attachment-name" style="margin-left: 10px; font-style: italic;"></span>
+                        </div>
+                        <div id="whiteboard-post-buttons" style="display: flex; gap: 10px;">
+                            <!-- Buttons are now dynamically generated in script.js -->
+                        </div>
                     </div>
                 </form>
             </div>

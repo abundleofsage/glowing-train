@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const whiteboardForm = document.getElementById('whiteboard-form');
     const whiteboardMessageEl = document.getElementById('whiteboard-message');
     const whiteboardListEl = document.getElementById('whiteboard-list');
+    const whiteboardAttachmentEl = document.getElementById('whiteboard-attachment');
+    const whiteboardAttachmentBtn = document.getElementById('whiteboard-attachment-btn');
+    const attachmentNameEl = document.getElementById('attachment-name');
 
     // Consolidated Task Form
     const taskForm = document.getElementById('task-form');
@@ -675,6 +678,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function renderAttachment(attachmentPath) {
+        if (!attachmentPath) return '';
+        const extension = attachmentPath.split('.').pop().toLowerCase();
+        const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+        const fileName = attachmentPath.split('/').pop().split('-').slice(1).join('-'); // More robust way to get original filename
+
+        if (imageExtensions.includes(extension)) {
+            return `<img src="${attachmentPath}" alt="Attachment" style="max-width: 100%; border-radius: 5px; margin-top: 10px;">`;
+        } else {
+            return `<div style="margin-top: 10px; padding: 10px; background-color: var(--input-bg-color); border-radius: 5px; border: 1px solid var(--border-color);">
+                        <a href="${attachmentPath}" download="${fileName}" style="text-decoration: none; color: var(--text-color); font-weight: 500;">
+                            <span style="font-size: 1.2rem; margin-right: 8px;">📎</span> ${fileName}
+                        </a>
+                    </div>`;
+        }
+    }
+
     function renderWhiteboardMessage(message, level) {
         const date = new Date(message.date);
         const personClass = getPersonClass(message.person);
@@ -695,7 +715,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="person-name">${message.person}</span>
                 </div>
                 <div class="card-body">
-                    <p>${message.message}</p>
+                    <p>${message.message.replace(/\n/g, '<br>')}</p>
+                    ${renderAttachment(message.attachment)}
                 </div>
                 <div class="card-footer">
                     <span class="timestamp">${date.toLocaleString()} (${age})</span>
@@ -1271,22 +1292,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    function addMessage(e) {
+    async function addMessage(e) {
         e.preventDefault();
         const person = e.submitter.dataset.person;
         const message = whiteboardMessageEl.value;
+        const file = whiteboardAttachmentEl.files[0];
+
         if (!message || !person) return;
+
+        let attachmentPath = null;
+        if (file) {
+            const formData = new FormData();
+            formData.append('attachment', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'File upload failed');
+                }
+
+                const result = await response.json();
+                attachmentPath = result.filePath;
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert(`Error uploading file: ${error.message}`);
+                return;
+            }
+        }
+
         const newMessage = {
             id: `w_${Date.now()}`,
             message,
             person,
             date: new Date().toISOString(),
+            attachment: attachmentPath, // Can be null
             replies: [],
             seenBy: []
         };
         state.whiteboard.push(newMessage);
         logActivity(`${person} posted on whiteboard: "${message.substring(0, 30)}..."`);
         whiteboardMessageEl.value = '';
+        whiteboardAttachmentEl.value = ''; // Reset file input
+        attachmentNameEl.textContent = ''; // Clear file name display
         saveData();
         render();
     }
@@ -1619,6 +1671,23 @@ document.addEventListener('DOMContentLoaded', () => {
     transactionForm.addEventListener('submit', addTransaction);
     transactionTypeEl.addEventListener('change', renderTransactionDetails);
     whiteboardForm.addEventListener('submit', addMessage);
+
+    if (whiteboardAttachmentBtn) {
+        whiteboardAttachmentBtn.addEventListener('click', () => {
+            whiteboardAttachmentEl.click();
+        });
+    }
+
+    if (whiteboardAttachmentEl) {
+        whiteboardAttachmentEl.addEventListener('change', () => {
+            if (whiteboardAttachmentEl.files.length > 0) {
+                attachmentNameEl.textContent = whiteboardAttachmentEl.files[0].name;
+            } else {
+                attachmentNameEl.textContent = '';
+            }
+        });
+    }
+
     mileageSettingsForm.addEventListener('change', updateMileageSettings);
     resetButton.addEventListener('click', resetAllData);
     loadTestDataButton.addEventListener('click', loadTestData);
