@@ -4,88 +4,253 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sage & Emily's Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.0/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+        .overview-section {
+            background-color: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .dark-mode .overview-section {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .overview-section h3 {
+            margin-top: 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .dark-mode .overview-section h3 {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        #activity-log-list, #upcoming-chores-list {
+            list-style-type: none;
+            padding-left: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        #activity-log-list li, #upcoming-chores-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        #activity-log-list li:last-child, #upcoming-chores-list li:last-child {
+            border-bottom: none;
+        }
+        #financial-summary-content p {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+        .chore-history {
+            list-style-type: none;
+            padding-left: 15px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            font-size: 0.85em;
+            color: #666;
+        }
+        .dark-mode .chore-history {
+            color: #aaa;
+        }
+        .chore-history li {
+            padding: 2px 0;
+        }
+    </style>
 </head>
 <body>
     <div class="header">
-        <h1>Sage & Emily's Expense Tracker</h1>
+        <h1 class="main-title">S&E Tracker</h1>
+        <div id="top-nav" class="top-nav">
+            <button class="nav-button active" data-index="0">Overview</button>
+            <button class="nav-button" data-index="1">Finance</button>
+            <button class="nav-button" data-index="2">Tasks</button>
+            <button class="nav-button" data-index="3">Whiteboard</button>
+        </div>
         <div class="header-controls">
-            <button id="reset-button" class="reset-button">Reset All Data</button>
-            <div class="theme-switcher">
-                <label class="switch">
-                    <input type="checkbox" id="theme-toggle">
-                    <span class="slider round"></span>
-                </label>
-            </div>
+            <button class="nav-button control-button" data-index="4">Settings</button>
         </div>
     </div>
 
     <div class="container">
-        <!-- Shared Fund Section -->
+        <!-- Overview Section -->
         <div class="card">
-            <h2>Shared Cash Fund</h2>
-            <p>Current Balance: <span id="fund-balance">$0.00</span></p>
+            <h2>Overview</h2>
+            <div class="overview-grid">
+                <div class="overview-section" id="financial-summary-section">
+                <h3>Latest Whiteboard Message</h3>
+                    <div id="financial-summary-content"></div>
+                </div>
+                <div class="overview-section" id="upcoming-chores-section">
+                    <h3>Upcoming Chores (Next 3 Days)</h3>
+                    <ul id="upcoming-chores-list"></ul>
+                </div>
+                <div class="overview-section" id="activity-log-section">
+                    <h3>Recent Activity</h3>
+                    <ul id="activity-log-list"></ul>
+                </div>
+            </div>
+        </div>
 
-            <div class="fund-analytics">
-                <h3>Analytics</h3>
-                <p id="equalizer-text">Contributions are balanced.</p>
-                <div class="contribution-stats">
-                    <p><b>Sage:</b> <span id="sage-total-contrib">$0.00</span> total (<span id="sage-avg-contrib">$0.00</span>/mo avg)</p>
-                    <p><b>Emily:</b> <span id="emily-total-contrib">$0.00</span> total (<span id="emily-avg-contrib">$0.00</span>/mo avg)</p>
+        <!-- Finance Section (Consolidated) -->
+        <div class="card">
+            <h2>Finance</h2>
+
+            <!-- Financial Summary Section -->
+            <div class="fund-analytics" style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <div class="summary-box" style="flex: 1; min-width: 250px;">
+                    <h3>Summary</h3>
+                    <p>Shared Fund Balance: <span id="finance-fund-balance">$0.00</span></p>
+                    <div id="finance-iou-summary">
+                        <!-- Detailed IOU summary will be rendered here by JS -->
+                    </div>
+                </div>
+                <div class="pie-chart-box" style="flex: 1; min-width: 250px;">
+                    <h3>Contributions</h3>
+                    <div id="contribution-pie-chart-container">
+                        <!-- Pie chart will be rendered here -->
+                    </div>
+                </div>
+                <div class="chart-box" style="flex: 1; min-width: 250px;">
+                    <h3>Expenses by Category</h3>
+                    <div id="expense-pie-chart-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="expense-pie-chart"></canvas>
+                    </div>
+                </div>
+                 <div class="chart-box" style="flex: 2; min-width: 100%;">
+                    <h3>Mileage Over Time</h3>
+                    <div id="mileage-line-graph-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="mileage-line-graph"></canvas>
+                    </div>
+                </div>
+                <div class="chart-box" style="flex: 2; min-width: 100%;">
+                    <h3>Monthly Mileage</h3>
+                     <div id="mileage-bar-chart-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="mileage-bar-chart"></canvas>
+                    </div>
                 </div>
             </div>
 
+            <!-- Add Transaction Section -->
             <div class="form-container">
-                <h3>Add Contribution</h3>
-                <form id="contribution-form">
-                    <select id="contribution-person" required>
-                        <option value="Sage">Sage</option>
-                        <option value="Emily">Emily</option>
+                <h3>Add Transaction</h3>
+                <form id="transaction-form">
+                    <select id="transaction-type" required>
+                        <option value="expense">Expense</option>
+                        <option value="contribution">Contribution</option>
+                        <option value="iou">IOU</option>
+                        <option value="mileage">Log Mileage</option>
                     </select>
-                    <input type="number" id="contribution-amount" placeholder="Amount" step="0.01" required>
-                    <button type="submit">Add Contribution</button>
+                    <div id="transaction-details">
+                        <!-- Dynamic form fields will be inserted here by JS based on type -->
+                    </div>
+                    <button type="submit">Add Transaction</button>
                 </form>
             </div>
 
-            <div class="form-container">
-                <h3>Record an Expense</h3>
-                <form id="expense-form">
-                    <input type="text" id="expense-description" placeholder="Item Description" required>
-                    <input type="number" id="expense-amount" placeholder="Amount" step="0.01" required>
-                    <button type="submit">Add Expense</button>
-                </form>
-            </div>
-
+            <!-- History Section -->
             <h3>History</h3>
-            <ul id="fund-history">
-                <!-- History items will be added here -->
+            <ul id="transaction-history">
+                <!-- Unified transaction history will be rendered here -->
             </ul>
         </div>
 
-        <!-- Mileage Section -->
+        <!-- Tasks Section (Consolidated) -->
         <div class="card">
-            <h2>Mileage Tracker (Rides from Sage)</h2>
-            <p>Current Amount Owed: <span id="mileage-total">$0.00</span></p>
+            <h2>Tasks</h2>
 
+            <!-- Add Task Form -->
             <div class="form-container">
-                <h3>Log a Trip</h3>
-                <form id="mileage-form">
-                    <input type="text" id="trip-description" placeholder="Trip Description" required>
-                    <input type="number" id="trip-miles" placeholder="Miles" step="0.1" required>
-                    <button type="submit">Log Trip</button>
+                <h3>Add a Task</h3>
+                <form id="task-form">
+                    <input type="text" id="task-description" placeholder="Task description..." required>
+                    <select id="task-type">
+                        <option value="chore">Chore</option>
+                        <option value="shopping">Shopping Item</option>
+                        <option value="wish">Wishlist Item</option>
+                    </select>
+                    <!-- Chore-specific options will be shown/hidden by JS -->
+                    <div id="chore-options" style="display: none;">
+                         <input type="number" id="chore-duration" placeholder="Days to repeat (or leave blank for one-time)" min="1" step="1">
+                    </div>
+                    <button type="submit">Add Task</button>
                 </form>
             </div>
 
+            <!-- Task Lists -->
+            <div class="task-section">
+                <h3>To Do Chores</h3>
+                <ul id="todo-chore-list"></ul>
+            </div>
+            <div class="task-section">
+                <h3>Shopping List</h3>
+                <ul id="todo-shopping-list"></ul>
+            </div>
+            <div class="task-section">
+                <h3>Wishlist</h3>
+                <ul id="todo-wish-list"></ul>
+            </div>
+            <div class="task-section">
+                <h3>Completed / Purchased</h3>
+                <ul id="completed-task-list"></ul>
+            </div>
+        </div>
+
+        <!-- Whiteboard Section -->
+        <div class="card">
+            <h2>Whiteboard</h2>
             <div class="form-container">
-                <h3>Record a Payment</h3>
-                <form id="payment-form">
-                    <input type="number" id="payment-amount" placeholder="Amount Paid" step="0.01" required>
-                    <button type="submit">Record Payment</button>
+                <form id="whiteboard-form">
+                    <textarea id="whiteboard-message" placeholder="Share a message..." rows="3" required></textarea>
+                    <input type="file" id="whiteboard-attachment" style="display: none;" />
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <div id="whiteboard-action-buttons" style="display: flex; align-items: center; gap: 10px;">
+                            <button type="button" id="whiteboard-attachment-btn" title="Attach file" style="background: none; border: none; font-size: 1.8rem; cursor: pointer; padding: 0; color: var(--text-color);">&#x1f4ce;</button>
+                            <button type="button" id="giphy-search-btn" title="Search GIF" style="background: none; border: 1px solid var(--border-color); font-size: 1rem; cursor: pointer; padding: 5px 8px; color: var(--text-color); font-weight: bold; border-radius: 5px; line-height: 1;">GIF</button>
+                            <span id="attachment-name" style="margin-left: 10px; font-style: italic;"></span>
+                        </div>
+                        <div id="whiteboard-post-buttons" style="display: flex; gap: 10px;">
+                            <!-- Buttons are now dynamically generated in script.js -->
+                        </div>
+                    </div>
+                    <div id="whiteboard-gif-preview" style="margin-top: 10px; position: relative;"></div>
                 </form>
             </div>
+            <h3>Messages</h3>
+            <div id="whiteboard-list" class="whiteboard-grid">
+                <!-- Messages will be added here -->
+            </div>
+        </div>
 
+        <!-- Settings Section -->
+        <div class="card">
+            <h2>Settings</h2>
+
+            <!-- General Settings -->
+            <div class="form-container">
+                <h3>General</h3>
+                <div id="roommate-settings-container">
+                    <!-- Roommate name inputs are dynamically generated here -->
+                </div>
+                 <div class="setting-row">
+                    <label for="theme-toggle-settings">Dark Mode:</label>
+                    <div class="theme-switcher">
+                        <label class="switch">
+                            <input type="checkbox" id="theme-toggle-settings">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mileage Settings -->
             <div class="form-container" id="mileage-settings-form">
-                <h3>Settings</h3>
+                <h3>Mileage</h3>
                 <div class="setting-row">
                     <label for="mpg">Vehicle MPG:</label>
                     <input type="number" id="mpg" value="25" step="1">
@@ -105,28 +270,81 @@
                 <p><b>Effective Rate:</b> $<span id="effective-rate">0.25</span> / mile</p>
             </div>
 
-            <h3>Trip Log</h3>
-            <ul id="mileage-history">
-                <!-- Mileage log items will be added here -->
-            </ul>
-        </div>
-
-        <!-- Whiteboard Section -->
-        <div class="card">
-            <h2>Whiteboard</h2>
+            <!-- Expense Category Settings -->
             <div class="form-container">
-                <form id="whiteboard-form">
-                    <textarea id="whiteboard-message" placeholder="Share a message..." rows="3" required></textarea>
-                    <button type="submit">Post Message</button>
+                <h3>Expense Categories</h3>
+                <ul id="expense-category-list">
+                    <!-- Categories will be rendered here by JS -->
+                </ul>
+                <form id="add-category-form" style="flex-direction: row; align-items: center;">
+                    <input type="text" id="new-category-name" placeholder="New category name" style="flex-grow: 1;" required>
+                    <button type="submit">Add</button>
                 </form>
             </div>
-            <h3>Messages</h3>
-            <ul id="whiteboard-list">
-                <!-- Messages will be added here -->
-            </ul>
+
+            <!-- Giphy Settings -->
+            <div class="form-container" id="giphy-settings-form">
+                <h3>Giphy</h3>
+                <div class="setting-row">
+                    <label for="giphy-api-key">Giphy API Key:</label>
+                    <input type="text" id="giphy-api-key" placeholder="Enter your Giphy API key">
+                </div>
+            </div>
+
+            <!-- Data Management -->
+            <div class="form-container">
+                <h3>Data Management</h3>
+                <div class="setting-row">
+                    <button id="import-button" class="control-button">Import Data</button>
+                    <input type="file" id="import-file" style="display: none;" accept=".json">
+                    <button id="export-button" class="control-button">Export Data</button>
+                </div>
+                <div class="setting-row">
+                    <button id="reset-button" class="reset-button">Reset All Data</button>
+                    <button id="load-test-data-button" class="control-button">Load Test Data</button>
+                </div>
+            </div>
         </div>
     </div>
 
+    <div class="nav-arrow left" id="nav-left">&lt;</div>
+    <div class="nav-arrow right" id="nav-right">&gt;</div>
+
+    <script src="test-data.js"></script>
     <script src="script.js"></script>
+
+    <!-- Giphy Search Modal -->
+    <div id="giphy-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="giphy-modal-close">&times;</span>
+            <h3>Search Giphy</h3>
+            <form id="giphy-search-form" style="flex-direction: row;">
+                <input type="text" id="giphy-search-input" placeholder="Search for GIFs..." style="flex-grow: 1;" required>
+                <button type="submit">Search</button>
+            </form>
+            <div id="giphy-results" class="giphy-results-grid">
+                <!-- GIF results will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Modal -->
+    <div id="purchase-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Add Expense for Purchase</h3>
+            <form id="purchase-form">
+                <input type="hidden" id="purchase-task-id">
+                <p><strong>Item:</strong> <span id="purchase-item-name"></span></p>
+                <label for="purchase-price">Price:</label>
+                <input type="number" id="purchase-price" step="0.01" required>
+                <label for="purchase-category">Category:</label>
+                <select id="purchase-category" required>
+                    <!-- Categories will be populated by JS -->
+                </select>
+                <button type="submit">Add Expense & Mark Purchased</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
